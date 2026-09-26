@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Development-only foundation for the standalone Rihlati Vanilla application." />
+    <meta name="robots" content="noindex, nofollow" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&amp;family=Inter:wght@400;500;600;700;800&amp;display=swap"
+    />
+
+    <script>
+      document.documentElement.classList.add('js')
+    </script>
+    <link rel="stylesheet" href="./src/styles/main.css" />
+    <title>Rihlati Vanilla Foundation</title>
+  </head>
+  <body class="paper">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    <div id="app" class="route-stage" data-app-root></div>
+    <noscript>
+      <p class="noscript-message">JavaScript is required to run the Rihlati application.</p>
+    </noscript>
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>
