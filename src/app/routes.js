@@ -2,6 +2,7 @@ import { createFoundationPage } from '../pages/foundation-page.js'
 import { createHomePage } from '../pages/home-page.js'
 import { createJourneyGeneratingPage } from '../pages/journey-generating-page.js'
 import { createTouristEntryPage } from '../pages/tourist-entry-page.js'
+import { createTouristJourneyPage } from '../pages/tourist-journey-page.js'
 import { createTouristQuestionnairePage } from '../pages/tourist-questionnaire-page.js'
 
 export const routes = [
@@ -24,6 +25,11 @@ export const routes = [
     path: '/t-generating',
     title: 'Building Your Journey | Rihlati — رحلتي',
     createPage: ({ router }) => createJourneyGeneratingPage({ router }),
+  },
+  {
+    path: '/t-journey',
+    title: 'Heritage & Desert Escape | Rihlati — رحلتي',
+    createPage: ({ path, router }) => createTouristJourneyPage({ path, router }),
   },
   {
     path: '/foundation/lifecycle',

@@ -1,0 +1,162 @@
+.journey-map {
+  container-type: size;
+  position: relative;
+  display: flex;
+  aspect-ratio: 4 / 5;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    to bottom right,
+    color-mix(in srgb, var(--color-sand-soft) 60%, transparent),
+    var(--color-surface)
+  );
+  padding: 1rem;
+}
+
+.journey-map__canvas {
+  position: relative;
+  width: 100cqmin;
+  height: 100cqmin;
+}
+
+.journey-map__image,
+.journey-map__route {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.journey-map__image {
+  object-fit: contain;
+  opacity: 0.95;
+}
+
+.journey-map__route {
+  pointer-events: none;
+}
+
+.journey-map__route-shadow {
+  stroke-width: 5;
+}
+
+.journey-map__route-line {
+  stroke-width: 3;
+  animation: drawLine 2.8s ease forwards;
+}
+
+.journey-map__marker {
+  --marker-x: 50%;
+  --marker-y: 50%;
+  --marker-delay: 0.4s;
+
+  position: absolute;
+  top: var(--marker-y);
+  left: var(--marker-x);
+  z-index: 2;
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  transform: translate(-50%, -50%);
+}
+
+.journey-map__marker-content {
+  position: relative;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  animation: pop 500ms var(--marker-delay) ease both;
+}
+
+.journey-map__pulse {
+  position: absolute;
+  inset: 0;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  background: var(--color-terracotta);
+  animation: pulseRing 1.8s ease-out infinite;
+}
+
+.journey-map__marker-dot {
+  position: relative;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--color-brand);
+  box-shadow:
+    0 10px 15px -3px rgba(23, 37, 35, 0.1),
+    0 4px 6px -4px rgba(23, 37, 35, 0.1);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: var(--font-weight-bold);
+  outline: 2px solid white;
+  transition: transform var(--duration-medium) var(--ease-standard);
+}
+
+.journey-map__marker:hover .journey-map__marker-dot,
+.journey-map__marker:focus-visible .journey-map__marker-dot {
+  transform: scale(1.1);
+}
+
+.journey-map__marker.is-active .journey-map__marker-dot {
+  background: var(--color-terracotta);
+}
+
+.journey-map__marker-label {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: max-content;
+  max-width: 10rem;
+  margin-top: 0.375rem;
+  border-radius: var(--radius-pill);
+  background: color-mix(in srgb, var(--color-surface) 85%, transparent);
+  box-shadow: 0 1px 2px rgba(23, 37, 35, 0.05);
+  color: var(--color-text-secondary);
+  font-size: 0.6875rem;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.2;
+  opacity: 0;
+  padding: 0.25rem 0.625rem;
+  pointer-events: none;
+  transform: translateX(-50%);
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    color var(--duration-medium) var(--ease-standard),
+    opacity var(--duration-medium) var(--ease-standard);
+}
+
+.journey-map__marker:hover .journey-map__marker-label,
+.journey-map__marker:focus-visible .journey-map__marker-label,
+.journey-map__marker.is-active .journey-map__marker-label {
+  background: var(--color-surface);
+  color: var(--color-text);
+  opacity: 1;
+}
+
+@supports not (width: 1cqmin) {
+  .journey-map__canvas {
+    width: 100%;
+    aspect-ratio: 1;
+    height: auto;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .journey-map__marker-content {
+    animation-delay: 0ms !important;
+  }
+}
