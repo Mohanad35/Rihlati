@@ -2,3 +2,6 @@
 @import './base.css';
 @import './layout.css';
 @import './animations.css';
+@import './components/ui.css';
+@import './components/site-shell.css';
+@import './pages/home.css';

@@ -1,10 +1,11 @@
 import { createFoundationPage } from '../pages/foundation-page.js'
+import { createHomePage } from '../pages/home-page.js'
 
 export const routes = [
   {
     path: '/',
-    title: 'Rihlati Vanilla Foundation',
-    createPage: ({ path }) => createFoundationPage({ path }),
+    title: 'Rihlati — رحلتي | Personalized Jordan Journeys',
+    createPage: ({ path }) => createHomePage({ path }),
   },
   {
     path: '/foundation/lifecycle',
@@ -14,7 +15,7 @@ export const routes = [
 ]
 
 export const notFoundRoute = {
-  title: 'Route Fallback · Rihlati Vanilla Foundation',
+  title: 'Route Not Available · Rihlati',
   createPage: ({ path }) =>
     createFoundationPage({
       path,
