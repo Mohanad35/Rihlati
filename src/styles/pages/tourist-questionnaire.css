@@ -1,0 +1,386 @@
+.tourist-questionnaire-page {
+  min-height: 100vh;
+}
+
+.tourist-questionnaire {
+  display: flex;
+  width: min(100%, 64rem);
+  min-height: 100vh;
+  margin-inline: auto;
+  flex-direction: column;
+  padding: 2rem 1.25rem;
+}
+
+.tourist-questionnaire__header {
+  margin-bottom: 2rem;
+}
+
+.tourist-questionnaire__header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.tourist-questionnaire__logo {
+  display: inline-flex;
+  flex: 0 0 auto;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: transform var(--duration-medium) var(--ease-standard);
+}
+
+.tourist-questionnaire__logo:hover {
+  transform: translateY(-0.125rem);
+}
+
+.tourist-questionnaire__logo img {
+  width: auto;
+  height: 2.25rem;
+  user-select: none;
+}
+
+.tourist-questionnaire__badge {
+  white-space: nowrap;
+}
+
+.questionnaire-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.questionnaire-stepper__item {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.questionnaire-stepper__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.questionnaire-stepper__circle {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-border) 60%, transparent);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  transition:
+    background-color 500ms var(--ease-standard),
+    box-shadow 500ms var(--ease-standard),
+    color 500ms var(--ease-standard);
+}
+
+.questionnaire-stepper__item.is-done .questionnaire-stepper__circle {
+  background: var(--color-brand);
+  color: white;
+}
+
+.questionnaire-stepper__item.is-active .questionnaire-stepper__circle {
+  background: var(--color-gold);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-gold) 25%, transparent);
+  color: var(--color-brand-dark);
+}
+
+.questionnaire-stepper__check {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 3;
+}
+
+.questionnaire-stepper__label {
+  display: none;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+}
+
+.questionnaire-stepper__item.is-active .questionnaire-stepper__label {
+  color: var(--color-text);
+}
+
+.questionnaire-stepper__connector {
+  position: relative;
+  height: 0.125rem;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+}
+
+.questionnaire-stepper__connector span {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  border-radius: inherit;
+  background: var(--color-brand);
+  transition: width 500ms var(--ease-standard);
+}
+
+.questionnaire-stepper__item.is-done .questionnaire-stepper__connector span {
+  width: 100%;
+}
+
+.tourist-questionnaire__card {
+  position: relative;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tourist-questionnaire__route-art {
+  position: absolute;
+  top: 0;
+  right: -2.5rem;
+  width: 18rem;
+  height: 12rem;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.tourist-questionnaire__question {
+  position: relative;
+  padding: 1.75rem;
+}
+
+.tourist-questionnaire__question > .eyebrow {
+  margin-bottom: 0;
+}
+
+.tourist-questionnaire__title {
+  margin: 0.75rem 0 0;
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+}
+
+.tourist-questionnaire__hint {
+  margin: 0.25rem 0 0;
+  color: var(--color-text-secondary);
+}
+
+.tourist-questionnaire__options {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.questionnaire-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+  padding: 1.25rem;
+  text-align: left;
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    border-color var(--duration-medium) var(--ease-standard),
+    box-shadow var(--duration-medium) var(--ease-standard),
+    transform var(--duration-medium) var(--ease-standard);
+}
+
+.questionnaire-option:hover {
+  transform: translateY(-0.125rem);
+  border-color: color-mix(in srgb, var(--color-brand) 40%, var(--color-border));
+}
+
+.questionnaire-option.is-selected {
+  border-color: var(--color-brand);
+  background: color-mix(in srgb, var(--color-brand) 6%, white);
+  box-shadow: 0 12px 28px -16px rgba(11, 92, 90, 0.55);
+}
+
+.questionnaire-option__icon {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--color-sand-soft);
+  color: var(--color-brand);
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    color var(--duration-medium) var(--ease-standard);
+}
+
+.questionnaire-option.is-selected .questionnaire-option__icon {
+  background: var(--color-brand);
+  color: white;
+}
+
+.questionnaire-option__body {
+  min-width: 0;
+  flex: 1;
+}
+
+.questionnaire-option__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.questionnaire-option__label {
+  color: var(--color-text);
+  font-weight: var(--font-weight-bold);
+}
+
+.questionnaire-option__indicator {
+  display: grid;
+  width: 1.25rem;
+  height: 1.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    border-color var(--duration-medium) var(--ease-standard);
+}
+
+.questionnaire-option.is-selected .questionnaire-option__indicator {
+  border-color: var(--color-brand);
+  background: var(--color-brand);
+}
+
+.questionnaire-option__check {
+  width: 0.75rem;
+  height: 0.75rem;
+  color: white;
+  stroke-width: 3;
+}
+
+.questionnaire-option__description {
+  display: block;
+  margin-top: 0.25rem;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.375;
+}
+
+.tourist-questionnaire__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+  margin-top: 1.75rem;
+}
+
+.questionnaire-chip {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.5;
+  padding: 0.5rem 1rem;
+  transition:
+    background-color var(--duration-medium) var(--ease-standard),
+    border-color var(--duration-medium) var(--ease-standard),
+    box-shadow var(--duration-medium) var(--ease-standard),
+    color var(--duration-medium) var(--ease-standard),
+    transform var(--duration-medium) var(--ease-standard);
+}
+
+.questionnaire-chip:hover {
+  transform: translateY(-0.125rem);
+  border-color: color-mix(in srgb, var(--color-terracotta) 50%, var(--color-border));
+}
+
+.questionnaire-chip.is-selected {
+  border-color: var(--color-terracotta);
+  background: var(--color-terracotta);
+  box-shadow: 0 8px 18px -10px rgba(201, 104, 67, 0.8);
+  color: white;
+}
+
+.tourist-questionnaire__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+
+.tourist-questionnaire__controls .button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+  transform: none;
+}
+
+.tourist-questionnaire__progress-wrap {
+  display: none;
+  flex: 1;
+  padding-inline: 1rem;
+}
+
+.questionnaire-progress {
+  width: 100%;
+  height: 0.5rem;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: var(--color-border);
+}
+
+.questionnaire-progress__fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(to right, var(--color-brand), var(--color-terracotta));
+  transition: width 700ms ease-out;
+}
+
+@media (min-width: 40rem) {
+  .tourist-questionnaire__options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .tourist-questionnaire__progress-wrap {
+    display: block;
+  }
+}
+
+@media (min-width: 48rem) {
+  .tourist-questionnaire__question {
+    padding: 2.5rem;
+  }
+
+  .tourist-questionnaire__title {
+    font-size: 1.875rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .tourist-questionnaire {
+    padding-inline: 2rem;
+  }
+
+  .questionnaire-stepper__label {
+    display: inline;
+  }
+}

@@ -1,6 +1,7 @@
 import { createFoundationPage } from '../pages/foundation-page.js'
 import { createHomePage } from '../pages/home-page.js'
 import { createTouristEntryPage } from '../pages/tourist-entry-page.js'
+import { createTouristQuestionnairePage } from '../pages/tourist-questionnaire-page.js'
 
 export const routes = [
   {
@@ -12,6 +13,11 @@ export const routes = [
     path: '/tourist-entry',
     title: 'Start Your Tourist Journey | Rihlati — رحلتي',
     createPage: ({ path }) => createTouristEntryPage({ path }),
+  },
+  {
+    path: '/t-questionnaire',
+    title: 'Personalize Your Journey | Rihlati — رحلتي',
+    createPage: ({ router }) => createTouristQuestionnairePage({ router }),
   },
   {
     path: '/foundation/lifecycle',
