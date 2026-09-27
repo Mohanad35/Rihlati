@@ -1,11 +1,17 @@
 import { createFoundationPage } from '../pages/foundation-page.js'
 import { createHomePage } from '../pages/home-page.js'
+import { createTouristEntryPage } from '../pages/tourist-entry-page.js'
 
 export const routes = [
   {
     path: '/',
     title: 'Rihlati — رحلتي | Personalized Jordan Journeys',
     createPage: ({ path }) => createHomePage({ path }),
+  },
+  {
+    path: '/tourist-entry',
+    title: 'Start Your Tourist Journey | Rihlati — رحلتي',
+    createPage: ({ path }) => createTouristEntryPage({ path }),
   },
   {
     path: '/foundation/lifecycle',

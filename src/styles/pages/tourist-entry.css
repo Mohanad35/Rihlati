@@ -1,0 +1,165 @@
+.tourist-entry-page {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.tourist-entry-main {
+  flex: 1;
+}
+
+.tourist-entry {
+  position: relative;
+  overflow: hidden;
+}
+
+.tourist-entry__grid {
+  display: grid;
+  align-items: center;
+  gap: 3rem;
+  padding-block: 4rem;
+}
+
+.tourist-entry__copy > .eyebrow {
+  margin-bottom: 0;
+}
+
+.tourist-entry__title {
+  margin: 1.25rem 0 0;
+  font-size: 2.25rem;
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.tourist-entry__title span {
+  color: var(--color-terracotta);
+}
+
+.tourist-entry__lead {
+  max-width: 28rem;
+  margin: 1.25rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: 1.125rem;
+  line-height: 1.625;
+}
+
+.tourist-entry__benefits {
+  display: grid;
+  gap: 0.75rem;
+  margin: 2rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tourist-entry-benefit {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tourist-entry-benefit__icon {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-brand) 10%, transparent);
+  color: var(--color-brand);
+}
+
+.tourist-entry-benefit__copy {
+  display: grid;
+}
+
+.tourist-entry-benefit__copy strong {
+  color: var(--color-text);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.5;
+}
+
+.tourist-entry-benefit__copy span {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.tourist-entry__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 2.25rem;
+}
+
+.tourist-entry__actions .button--ghost,
+.tourist-entry__actions .button--ghost:hover {
+  color: var(--color-text);
+}
+
+.tourist-entry__guest-note {
+  margin: 1rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.tourist-entry__visual {
+  position: relative;
+  min-width: 0;
+}
+
+.tourist-entry-card {
+  overflow: hidden;
+}
+
+.tourist-entry-card__hero-image {
+  width: 100%;
+  height: 24rem;
+  background: var(--color-sand-soft);
+  object-fit: cover;
+}
+
+.tourist-entry-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 1.25rem;
+}
+
+.tourist-entry-card__thumbnail {
+  width: 3.5rem;
+  height: 3.5rem;
+  flex: 0 0 auto;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+}
+
+.tourist-entry-card__copy {
+  display: grid;
+  min-width: 0;
+}
+
+.tourist-entry-card__copy strong {
+  color: var(--color-text);
+  font-weight: var(--font-weight-bold);
+  line-height: 1.5;
+}
+
+.tourist-entry-card__copy span {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+@media (min-width: 48rem) {
+  .tourist-entry__title {
+    font-size: 3rem;
+  }
+}
+
+@media (min-width: 64rem) {
+  .tourist-entry__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    padding-block: 6rem;
+  }
+}
