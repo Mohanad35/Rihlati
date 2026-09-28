@@ -1,5 +1,6 @@
 import { createFoundationPage } from '../pages/foundation-page.js'
 import { createHomePage } from '../pages/home-page.js'
+import { createBusinessDiscoveryPage } from '../pages/business-discovery-page.js'
 import { createInvestorEntryPage } from '../pages/investor-entry-page.js'
 import { createInvestorComparePage } from '../pages/investor-compare-page.js'
 import { createInvestorMatchingPage } from '../pages/investor-matching-page.js'
@@ -28,6 +29,11 @@ export const routes = [
     path: '/investor-entry',
     title: 'Tourism Investment Guidance | Rihlati — رحلتي',
     createPage: ({ path }) => createInvestorEntryPage({ path }),
+  },
+  {
+    path: '/ei-discovery',
+    title: 'Business Discovery | Rihlati — رحلتي',
+    createPage: ({ router }) => createBusinessDiscoveryPage({ router }),
   },
   {
     path: '/ni-questionnaire',
