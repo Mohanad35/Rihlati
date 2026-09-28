@@ -3,6 +3,7 @@ import { createHomePage } from '../pages/home-page.js'
 import { createBusinessDiscoveryPage } from '../pages/business-discovery-page.js'
 import { createBusinessMatchPage } from '../pages/business-match-page.js'
 import { createBusinessSimulationPage } from '../pages/business-simulation-page.js'
+import { createPartnershipSummaryPage } from '../pages/partnership-summary-page.js'
 import { createInvestorEntryPage } from '../pages/investor-entry-page.js'
 import { createInvestorComparePage } from '../pages/investor-compare-page.js'
 import { createInvestorMatchingPage } from '../pages/investor-matching-page.js'
@@ -46,6 +47,11 @@ export const routes = [
     path: '/ei-simulation',
     title: 'Journey Placement Simulation | Rihlati — رحلتي',
     createPage: ({ path }) => createBusinessSimulationPage({ path }),
+  },
+  {
+    path: '/ei-summary',
+    title: 'Partnership Summary | Rihlati — رحلتي',
+    createPage: ({ path }) => createPartnershipSummaryPage({ path }),
   },
   {
     path: '/ni-questionnaire',

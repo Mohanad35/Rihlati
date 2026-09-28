@@ -1,0 +1,89 @@
+.partnership-summary-page {
+  min-height: 100vh;
+}
+
+.partnership-summary {
+  width: min(100%, 48rem);
+  margin-inline: auto;
+  padding: 3rem var(--page-gutter);
+}
+
+.partnership-summary__title {
+  margin: 0.75rem 0 0;
+  color: var(--color-text-primary);
+  font-size: clamp(1.875rem, 4vw, 2.25rem);
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.partnership-summary__description {
+  margin: 0.5rem 0 0;
+  color: var(--color-text-secondary);
+  line-height: 1.65;
+}
+
+.partnership-summary__card {
+  overflow: hidden;
+  margin: 2rem 0 0;
+}
+
+.partnership-summary__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+}
+
+.partnership-summary__row + .partnership-summary__row {
+  border-top: 1px solid var(--color-border);
+}
+
+.partnership-summary__label,
+.partnership-summary__value {
+  margin: 0;
+  font-weight: var(--font-weight-semibold);
+}
+
+.partnership-summary__label {
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+}
+
+.partnership-summary__value {
+  color: var(--color-text-primary);
+  text-align: right;
+}
+
+.partnership-summary__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+@media (max-width: 30rem) {
+  .partnership-summary {
+    padding-block: 2.5rem;
+  }
+
+  .partnership-summary__row {
+    align-items: flex-start;
+    padding-inline: 1.25rem;
+  }
+
+  .partnership-summary__value {
+    max-width: 62%;
+  }
+
+  .partnership-summary__actions {
+    align-items: stretch;
+    flex-direction: column-reverse;
+  }
+
+  .partnership-summary__actions .button {
+    width: 100%;
+  }
+}
