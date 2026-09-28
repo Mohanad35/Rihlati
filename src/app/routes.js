@@ -1,6 +1,7 @@
 import { createFoundationPage } from '../pages/foundation-page.js'
 import { createHomePage } from '../pages/home-page.js'
 import { createJourneyGeneratingPage } from '../pages/journey-generating-page.js'
+import { createMyJourneysPage } from '../pages/my-journeys-page.js'
 import { createTouristEntryPage } from '../pages/tourist-entry-page.js'
 import { createTouristJourneyPage } from '../pages/tourist-journey-page.js'
 import { createTouristQuestionnairePage } from '../pages/tourist-questionnaire-page.js'
@@ -36,6 +37,11 @@ export const routes = [
     path: '/t-save',
     title: 'Save Your Journey | Rihlati — رحلتي',
     createPage: ({ path }) => createTouristSavePage({ path }),
+  },
+  {
+    path: '/t-my-journeys',
+    title: 'My Journeys | Rihlati — رحلتي',
+    createPage: ({ path }) => createMyJourneysPage({ path }),
   },
   {
     path: '/foundation/lifecycle',
