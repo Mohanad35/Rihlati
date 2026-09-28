@@ -4,6 +4,7 @@ import { createJourneyGeneratingPage } from '../pages/journey-generating-page.js
 import { createTouristEntryPage } from '../pages/tourist-entry-page.js'
 import { createTouristJourneyPage } from '../pages/tourist-journey-page.js'
 import { createTouristQuestionnairePage } from '../pages/tourist-questionnaire-page.js'
+import { createTouristSavePage } from '../pages/tourist-save-page.js'
 
 export const routes = [
   {
@@ -30,6 +31,11 @@ export const routes = [
     path: '/t-journey',
     title: 'Heritage & Desert Escape | Rihlati — رحلتي',
     createPage: ({ path, router }) => createTouristJourneyPage({ path, router }),
+  },
+  {
+    path: '/t-save',
+    title: 'Save Your Journey | Rihlati — رحلتي',
+    createPage: ({ path }) => createTouristSavePage({ path }),
   },
   {
     path: '/foundation/lifecycle',
