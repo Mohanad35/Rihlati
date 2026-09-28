@@ -65,16 +65,25 @@ function createRouteSvg(stops, clipId) {
   return svg
 }
 
-function createMarker(stop, index, activeIndex) {
+function createMarker(stop, index, activeIndex, interactive) {
   const active = index === activeIndex
-  const marker = createElement('button', {
-    className: ['journey-map__marker', active ? 'is-active' : ''].filter(Boolean).join(' '),
+  const best = stop.rank === 'Best Match'
+  const marker = createElement(interactive ? 'button' : 'span', {
+    className: [
+      'journey-map__marker',
+      active ? 'is-active' : '',
+      best ? 'is-best' : '',
+    ].filter(Boolean).join(' '),
     attributes: {
-      type: 'button',
-      'data-journey-action': 'select-stop',
-      'data-stop-index': index,
-      'aria-label': `Select stop ${index + 1}: ${stop.name}`,
-      'aria-pressed': active ? 'true' : 'false',
+      ...(interactive
+        ? {
+            type: 'button',
+            'data-journey-action': 'select-stop',
+            'data-stop-index': index,
+            'aria-label': `Select stop ${index + 1}: ${stop.name}`,
+            'aria-pressed': active ? 'true' : 'false',
+          }
+        : { 'aria-hidden': 'true' }),
     },
     children: [
       createElement('span', {
@@ -83,11 +92,11 @@ function createMarker(stop, index, activeIndex) {
         children: [
           createElement('span', {
             className: 'journey-map__pulse',
-            attributes: active ? {} : { hidden: true },
+            attributes: active || best ? {} : { hidden: true },
           }),
           createElement('span', {
             className: 'journey-map__marker-dot',
-            text: String(index + 1),
+            text: best ? '★' : String(index + 1),
           }),
           createElement('span', {
             className: 'journey-map__marker-label',
@@ -104,9 +113,9 @@ function createMarker(stop, index, activeIndex) {
   return marker
 }
 
-export function createJourneyMapPresentation({ stops, activeIndex = 0 }) {
+export function createJourneyMapPresentation({ stops, activeIndex = 0, interactive = true }) {
   const clipId = `journey-map-clip-${++mapInstance}`
-  const markers = stops.map((stop, index) => createMarker(stop, index, activeIndex))
+  const markers = stops.map((stop, index) => createMarker(stop, index, activeIndex, interactive))
   const element = createElement('section', {
     className: 'journey-map',
     attributes: { 'aria-label': 'Journey route map' },
@@ -137,8 +146,11 @@ export function createJourneyMapPresentation({ stops, activeIndex = 0 }) {
       markers.forEach((marker, index) => {
         const active = index === nextIndex
         marker.classList.toggle('is-active', active)
-        marker.setAttribute('aria-pressed', active ? 'true' : 'false')
-        marker.querySelector('.journey-map__pulse').hidden = !active
+        if (marker instanceof HTMLButtonElement) {
+          marker.setAttribute('aria-pressed', active ? 'true' : 'false')
+        }
+        marker.querySelector('.journey-map__pulse').hidden =
+          !(active || marker.classList.contains('is-best'))
       })
     },
   }

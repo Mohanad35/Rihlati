@@ -2,6 +2,7 @@ import { createFoundationPage } from '../pages/foundation-page.js'
 import { createHomePage } from '../pages/home-page.js'
 import { createBusinessDiscoveryPage } from '../pages/business-discovery-page.js'
 import { createBusinessMatchPage } from '../pages/business-match-page.js'
+import { createBusinessSimulationPage } from '../pages/business-simulation-page.js'
 import { createInvestorEntryPage } from '../pages/investor-entry-page.js'
 import { createInvestorComparePage } from '../pages/investor-compare-page.js'
 import { createInvestorMatchingPage } from '../pages/investor-matching-page.js'
@@ -40,6 +41,11 @@ export const routes = [
     path: '/ei-match',
     title: 'Business Tourist Match | Rihlati — رحلتي',
     createPage: ({ path }) => createBusinessMatchPage({ path }),
+  },
+  {
+    path: '/ei-simulation',
+    title: 'Journey Placement Simulation | Rihlati — رحلتي',
+    createPage: ({ path }) => createBusinessSimulationPage({ path }),
   },
   {
     path: '/ni-questionnaire',

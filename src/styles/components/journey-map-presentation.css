@@ -69,6 +69,10 @@
   transform: translate(-50%, -50%);
 }
 
+.journey-map__marker[aria-hidden='true'] {
+  cursor: default;
+}
+
 .journey-map__marker-content {
   position: relative;
   display: grid;
@@ -115,6 +119,15 @@
   background: var(--color-terracotta);
 }
 
+.journey-map__marker.is-best .journey-map__marker-dot {
+  background: var(--color-gold);
+  color: var(--color-brand-dark);
+}
+
+.journey-map__marker.is-best .journey-map__pulse {
+  background: var(--color-gold);
+}
+
 .journey-map__marker-label {
   position: absolute;
   top: 100%;
@@ -141,7 +154,8 @@
 
 .journey-map__marker:hover .journey-map__marker-label,
 .journey-map__marker:focus-visible .journey-map__marker-label,
-.journey-map__marker.is-active .journey-map__marker-label {
+.journey-map__marker.is-active .journey-map__marker-label,
+.journey-map__marker.is-best .journey-map__marker-label {
   background: var(--color-surface);
   color: var(--color-text);
   opacity: 1;
