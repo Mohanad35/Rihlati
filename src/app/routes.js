@@ -1,6 +1,7 @@
 import { createFoundationPage } from '../pages/foundation-page.js'
 import { createHomePage } from '../pages/home-page.js'
 import { createBusinessDiscoveryPage } from '../pages/business-discovery-page.js'
+import { createBusinessMatchPage } from '../pages/business-match-page.js'
 import { createInvestorEntryPage } from '../pages/investor-entry-page.js'
 import { createInvestorComparePage } from '../pages/investor-compare-page.js'
 import { createInvestorMatchingPage } from '../pages/investor-matching-page.js'
@@ -34,6 +35,11 @@ export const routes = [
     path: '/ei-discovery',
     title: 'Business Discovery | Rihlati — رحلتي',
     createPage: ({ router }) => createBusinessDiscoveryPage({ router }),
+  },
+  {
+    path: '/ei-match',
+    title: 'Business Tourist Match | Rihlati — رحلتي',
+    createPage: ({ path }) => createBusinessMatchPage({ path }),
   },
   {
     path: '/ni-questionnaire',
