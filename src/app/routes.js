@@ -3,6 +3,7 @@ import { createHomePage } from '../pages/home-page.js'
 import { createInvestorEntryPage } from '../pages/investor-entry-page.js'
 import { createJourneyGeneratingPage } from '../pages/journey-generating-page.js'
 import { createMyJourneysPage } from '../pages/my-journeys-page.js'
+import { createNewInvestorQuestionnairePage } from '../pages/new-investor-questionnaire-page.js'
 import { createTouristEntryPage } from '../pages/tourist-entry-page.js'
 import { createTouristJourneyPage } from '../pages/tourist-journey-page.js'
 import { createTouristQuestionnairePage } from '../pages/tourist-questionnaire-page.js'
@@ -23,6 +24,11 @@ export const routes = [
     path: '/investor-entry',
     title: 'Tourism Investment Guidance | Rihlati — رحلتي',
     createPage: ({ path }) => createInvestorEntryPage({ path }),
+  },
+  {
+    path: '/ni-questionnaire',
+    title: 'Investment Criteria | Rihlati — رحلتي',
+    createPage: ({ router }) => createNewInvestorQuestionnairePage({ router }),
   },
   {
     path: '/t-questionnaire',

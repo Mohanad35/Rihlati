@@ -3,6 +3,8 @@ import { createElement } from '../utils/dom.js'
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
 
 const iconPaths = Object.freeze({
+  building: 'M3 21h18M5 21V7l8-4v18M19 21V11l-6-4M9 9v.01M9 13v.01M9 17v.01',
+  chart: 'M3 3v18h18M18 17V9M13 17V5M8 17v-3',
   compass: 'M12 2a10 10 0 100 20 10 10 0 000-20zm3.5 6.5-2 5-5 2 2-5 5-2z',
   users: 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 8 4 4 0 000-8zm14 14v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75',
   heart: 'M20.8 4.6a5.5 5.5 0 00-7.8 0L12 5.6l-1-1a5.5 5.5 0 00-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 000-7.8z',
