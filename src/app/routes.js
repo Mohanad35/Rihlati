@@ -2,6 +2,7 @@ import { createFoundationPage } from '../pages/foundation-page.js'
 import { createHomePage } from '../pages/home-page.js'
 import { createInvestorEntryPage } from '../pages/investor-entry-page.js'
 import { createInvestorMatchingPage } from '../pages/investor-matching-page.js'
+import { createInvestorResultPage } from '../pages/investor-result-page.js'
 import { createJourneyGeneratingPage } from '../pages/journey-generating-page.js'
 import { createMyJourneysPage } from '../pages/my-journeys-page.js'
 import { createNewInvestorQuestionnairePage } from '../pages/new-investor-questionnaire-page.js'
@@ -35,6 +36,11 @@ export const routes = [
     path: '/ni-matching',
     title: 'Finding Investment Matches | Rihlati — رحلتي',
     createPage: ({ router }) => createInvestorMatchingPage({ router }),
+  },
+  {
+    path: '/ni-result',
+    title: 'Tourism Opportunity Matches | Rihlati — رحلتي',
+    createPage: ({ path }) => createInvestorResultPage({ path }),
   },
   {
     path: '/t-questionnaire',
