@@ -5,6 +5,7 @@ import { createInvestorComparePage } from '../pages/investor-compare-page.js'
 import { createInvestorMatchingPage } from '../pages/investor-matching-page.js'
 import { createInvestorResultPage } from '../pages/investor-result-page.js'
 import { createJourneyGeneratingPage } from '../pages/journey-generating-page.js'
+import { createMyInvestmentsPage } from '../pages/my-investments-page.js'
 import { createMyJourneysPage } from '../pages/my-journeys-page.js'
 import { createNewInvestorQuestionnairePage } from '../pages/new-investor-questionnaire-page.js'
 import { createTouristEntryPage } from '../pages/tourist-entry-page.js'
@@ -47,6 +48,11 @@ export const routes = [
     path: '/ni-compare',
     title: 'Compare Tourism Opportunities | Rihlati — رحلتي',
     createPage: ({ path }) => createInvestorComparePage({ path }),
+  },
+  {
+    path: '/ni-my-investments',
+    title: 'My Investments | Rihlati — رحلتي',
+    createPage: ({ path }) => createMyInvestmentsPage({ path }),
   },
   {
     path: '/t-questionnaire',
