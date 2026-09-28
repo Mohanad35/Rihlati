@@ -1,4 +1,5 @@
 import { createFoundationPage } from '../pages/foundation-page.js'
+import { createAdminDashboardPage } from '../pages/admin-dashboard-page.js'
 import { createHomePage } from '../pages/home-page.js'
 import { createBusinessDiscoveryPage } from '../pages/business-discovery-page.js'
 import { createBusinessMatchPage } from '../pages/business-match-page.js'
@@ -19,6 +20,11 @@ import { createTouristQuestionnairePage } from '../pages/tourist-questionnaire-p
 import { createTouristSavePage } from '../pages/tourist-save-page.js'
 
 export const routes = [
+  {
+    path: '/admin',
+    title: 'Admin Dashboard | Rihlati — رحلتي',
+    createPage: () => createAdminDashboardPage(),
+  },
   {
     path: '/',
     title: 'Rihlati — رحلتي | Personalized Jordan Journeys',
