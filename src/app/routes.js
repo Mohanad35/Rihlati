@@ -1,6 +1,7 @@
 import { createFoundationPage } from '../pages/foundation-page.js'
 import { createHomePage } from '../pages/home-page.js'
 import { createInvestorEntryPage } from '../pages/investor-entry-page.js'
+import { createInvestorComparePage } from '../pages/investor-compare-page.js'
 import { createInvestorMatchingPage } from '../pages/investor-matching-page.js'
 import { createInvestorResultPage } from '../pages/investor-result-page.js'
 import { createJourneyGeneratingPage } from '../pages/journey-generating-page.js'
@@ -41,6 +42,11 @@ export const routes = [
     path: '/ni-result',
     title: 'Tourism Opportunity Matches | Rihlati — رحلتي',
     createPage: ({ path }) => createInvestorResultPage({ path }),
+  },
+  {
+    path: '/ni-compare',
+    title: 'Compare Tourism Opportunities | Rihlati — رحلتي',
+    createPage: ({ path }) => createInvestorComparePage({ path }),
   },
   {
     path: '/t-questionnaire',
