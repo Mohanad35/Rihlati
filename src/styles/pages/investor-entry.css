@@ -1,0 +1,152 @@
+.investor-entry-page {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+
+.investor-entry-main {
+  flex: 1;
+}
+
+.investor-entry__inner {
+  max-width: 72rem;
+  padding-block: 4rem;
+}
+
+.investor-entry__heading {
+  max-width: 42rem;
+}
+
+.investor-entry__heading > .eyebrow {
+  margin-bottom: 0;
+}
+
+.investor-entry__title {
+  margin: 1.25rem 0 0;
+  color: var(--color-text);
+  font-size: 2.25rem;
+  font-weight: var(--font-weight-extrabold);
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.investor-entry__lead {
+  margin: 1rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: 1.125rem;
+  line-height: 1.75rem;
+}
+
+.investor-entry__grid {
+  display: grid;
+  gap: 1.5rem;
+  margin-top: 3rem;
+}
+
+.investor-entry-card-wrap,
+.investor-entry-card {
+  min-width: 0;
+  height: 100%;
+}
+
+.investor-entry-card {
+  overflow: hidden;
+  transition-duration: 400ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.investor-entry-card__visual {
+  position: relative;
+  height: 11rem;
+  overflow: hidden;
+  background: var(--color-sand-soft);
+}
+
+.investor-entry-card__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 700ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.investor-entry-card__badge {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  line-height: 1rem;
+}
+
+.investor-entry-card__badge.badge--gold {
+  background: color-mix(in srgb, var(--color-gold) 18%, white);
+  color: #8a6a12;
+}
+
+.investor-entry-card__badge.badge--brand {
+  background: color-mix(in srgb, var(--color-brand) 12%, white);
+}
+
+.investor-entry-card__body {
+  padding: 1.75rem;
+}
+
+.investor-entry-card__title {
+  margin: 0;
+  color: var(--color-text);
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-bold);
+  line-height: 1.375;
+}
+
+.investor-entry-card__description {
+  margin: 0.75rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  line-height: 1.625;
+}
+
+.investor-entry-card__action {
+  margin-top: 1.5rem;
+}
+
+.investor-entry-card:hover .investor-entry-card__image,
+.investor-entry-card:focus-within .investor-entry-card__image {
+  transform: scale(1.05);
+}
+
+.investor-entry-card:focus-within {
+  transform: translateY(-0.375rem);
+  border-color: color-mix(in srgb, var(--color-brand) 25%, var(--color-border));
+  box-shadow: var(--shadow-lift);
+}
+
+.investor-entry__disclaimer {
+  max-width: 42rem;
+  margin: 2rem 0 0;
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+@media (min-width: 48rem) {
+  .investor-entry__title {
+    font-size: 3rem;
+  }
+
+  .investor-entry__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .investor-entry__inner {
+    padding-block: 6rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .investor-entry-card:hover .investor-entry-card__image,
+  .investor-entry-card:focus-within .investor-entry-card__image,
+  .investor-entry-card:focus-within {
+    transform: none;
+  }
+}
