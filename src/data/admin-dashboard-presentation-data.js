@@ -1,11 +1,11 @@
 export const adminDashboardPresentation = Object.freeze({
   navigation: Object.freeze([
-    Object.freeze({ id: 'dashboard', label: 'Dashboard', icon: 'dashboard', active: true }),
-    Object.freeze({ id: 'users', label: 'Users', icon: 'users', active: false }),
-    Object.freeze({ id: 'matching', label: 'Matching', icon: 'matching', active: false }),
-    Object.freeze({ id: 'content', label: 'Content', icon: 'content', active: false }),
-    Object.freeze({ id: 'partnerships', label: 'Partnerships', icon: 'partnerships', active: false }),
-    Object.freeze({ id: 'settings', label: 'Settings', icon: 'settings', active: false }),
+    Object.freeze({ id: 'dashboard', label: 'Dashboard', icon: 'dashboard', href: '/admin' }),
+    Object.freeze({ id: 'users', label: 'Users', icon: 'users', href: '/admin/users' }),
+    Object.freeze({ id: 'matching', label: 'Matching', icon: 'matching' }),
+    Object.freeze({ id: 'content', label: 'Content', icon: 'content' }),
+    Object.freeze({ id: 'partnerships', label: 'Partnerships', icon: 'partnerships' }),
+    Object.freeze({ id: 'settings', label: 'Settings', icon: 'settings' }),
   ]),
   metrics: Object.freeze([
     Object.freeze({

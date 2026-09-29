@@ -1,5 +1,6 @@
 import { createFoundationPage } from '../pages/foundation-page.js'
 import { createAdminDashboardPage } from '../pages/admin-dashboard-page.js'
+import { createAdminUsersPage } from '../pages/admin-users-page.js'
 import { createHomePage } from '../pages/home-page.js'
 import { createBusinessDiscoveryPage } from '../pages/business-discovery-page.js'
 import { createBusinessMatchPage } from '../pages/business-match-page.js'
@@ -24,6 +25,11 @@ export const routes = [
     path: '/admin',
     title: 'Admin Dashboard | Rihlati — رحلتي',
     createPage: () => createAdminDashboardPage(),
+  },
+  {
+    path: '/admin/users',
+    title: 'Admin Users | Rihlati — رحلتي',
+    createPage: () => createAdminUsersPage(),
   },
   {
     path: '/',
