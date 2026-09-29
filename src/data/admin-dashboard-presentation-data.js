@@ -15,7 +15,7 @@ export const adminDashboardPresentation = Object.freeze({
       icon: 'partnerships',
       href: '/admin/partnerships',
     }),
-    Object.freeze({ id: 'settings', label: 'Settings', icon: 'settings' }),
+    Object.freeze({ id: 'settings', label: 'Settings', icon: 'settings', href: '/admin/settings' }),
   ]),
   metrics: Object.freeze([
     Object.freeze({
