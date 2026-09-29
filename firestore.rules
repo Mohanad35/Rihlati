@@ -190,7 +190,7 @@ service cloud.firestore {
         && stop.imageAlt.size() <= 300;
     }
 
-    function hasSafeJourney(data) {
+    function hasSafeJourneyEnvelope(data) {
       return data.keys().hasAll([
           'ownerId',
           'schemaVersion',
@@ -222,22 +222,11 @@ service cloud.firestore {
         && data.title is string
         && data.title.size() > 0
         && data.title.size() <= 160
-        && hasSafeJourneySummary(data.summary)
-        && hasSafeTouristPreferences(data.preferences)
+        && data.summary is map
+        && data.preferences is map
         && data.stops is list
         && data.stops.size() >= 1
         && data.stops.size() <= 10
-        && hasSafeJourneyStop(data.stops[0])
-        && (data.stops.size() < 2 || hasSafeJourneyStop(data.stops[1]))
-        && (data.stops.size() < 3 || hasSafeJourneyStop(data.stops[2]))
-        && (data.stops.size() < 4 || hasSafeJourneyStop(data.stops[3]))
-        && (data.stops.size() < 5 || hasSafeJourneyStop(data.stops[4]))
-        && (data.stops.size() < 6 || hasSafeJourneyStop(data.stops[5]))
-        && (data.stops.size() < 7 || hasSafeJourneyStop(data.stops[6]))
-        && (data.stops.size() < 8 || hasSafeJourneyStop(data.stops[7]))
-        && (data.stops.size() < 9 || hasSafeJourneyStop(data.stops[8]))
-        && (data.stops.size() < 10 || hasSafeJourneyStop(data.stops[9]))
-        && data.summary.stopCount == data.stops.size()
         && data.createdAt is timestamp
         && data.updatedAt is timestamp;
     }
@@ -271,7 +260,7 @@ service cloud.firestore {
     match /journeys/{journeyId} {
       allow create: if isAuthenticated()
         && request.resource.data.ownerId == request.auth.uid
-        && hasSafeJourney(request.resource.data)
+        && hasSafeJourneyEnvelope(request.resource.data)
         && request.resource.data.createdAt == request.time
         && request.resource.data.updatedAt == request.time;
 
@@ -280,7 +269,7 @@ service cloud.firestore {
 
       allow update: if isJourneyOwner(resource.data)
         && request.resource.data.ownerId == resource.data.ownerId
-        && hasSafeJourney(request.resource.data)
+        && hasSafeJourneyEnvelope(request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt == request.time;
 

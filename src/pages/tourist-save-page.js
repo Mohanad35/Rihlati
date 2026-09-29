@@ -17,6 +17,7 @@ import {
   createUserProfile,
   getUserProfile,
 } from '../repositories/user-repository.js'
+import { savePendingTouristJourney } from '../services/journey-service.js'
 import { createElement } from '../utils/dom.js'
 
 const JOURNEY_PATH = '/t-journey'
@@ -89,7 +90,7 @@ function createSaveExplanation() {
       }),
       createElement('p', {
         className: 'tourist-save__lead',
-        text: 'You explored as a guest. Create an account or sign in now so this journey can be connected to your account when journey saving is enabled.',
+        text: 'You explored as a guest. Create an account or sign in now to save this journey securely to your RIHLATI account.',
       }),
       createJourneyPreview(),
     ],
@@ -207,7 +208,7 @@ function createSaveFormCard() {
           }),
           createElement('p', {
             className: 'tourist-save-form__note',
-            text: 'Authentication is secure. Journey saving will be connected in a later step.',
+            text: 'Authentication is secure. Your journey is saved only after your account is ready.',
           }),
         ],
       }),
@@ -222,11 +223,11 @@ function createGateState() {
   })
 }
 
-function createAuthenticatedState(user, profile) {
+function createSavedState(user, profile) {
   const accountLabel = profile?.displayName?.trim() || user?.email
   const heading = createElement('h1', {
     className: 'tourist-save-success__title',
-    text: 'You’re signed in',
+    text: 'Journey saved',
     attributes: {
       id: 'tourist-save-title',
       tabindex: '-1',
@@ -245,8 +246,8 @@ function createAuthenticatedState(user, profile) {
       createElement('p', {
         className: 'tourist-save-success__copy',
         text: accountLabel
-          ? `Signed in as ${accountLabel}. Your RIHLATI profile is ready. Your journey has not been saved yet.`
-          : 'Your RIHLATI profile is ready. Your journey has not been saved yet.',
+          ? `Saved securely to the RIHLATI account for ${accountLabel}.`
+          : 'Saved securely to your RIHLATI account.',
       }),
       createElement('div', {
         className: 'tourist-save-success__actions',
@@ -256,6 +257,51 @@ function createAuthenticatedState(user, profile) {
             label: 'Go to My Journeys',
             arrow: true,
           }),
+          createButtonLink({
+            href: JOURNEY_PATH,
+            label: 'Back to journey',
+            variant: 'outline',
+          }),
+        ],
+      }),
+    ],
+  })
+
+  return { element, heading }
+}
+
+function createSaveFailureState(message, { canRetry = true } = {}) {
+  const heading = createElement('h1', {
+    className: 'tourist-save-success__title',
+    text: 'We couldn’t save your journey',
+    attributes: {
+      id: 'tourist-save-title',
+      tabindex: '-1',
+    },
+  })
+
+  const element = createElement('div', {
+    className: 'tourist-save-success animate-scale-in',
+    children: [
+      heading,
+      createElement('p', {
+        className: 'tourist-save-success__copy',
+        text: message,
+        attributes: { role: 'alert' },
+      }),
+      createElement('div', {
+        className: 'tourist-save-success__actions',
+        children: [
+          ...(canRetry
+            ? [createElement('button', {
+                className: 'button button--primary',
+                text: 'Try saving again',
+                attributes: {
+                  type: 'button',
+                  'data-save-gate-retry': true,
+                },
+              })]
+            : []),
           createButtonLink({
             href: JOURNEY_PATH,
             label: 'Back to journey',
@@ -327,10 +373,13 @@ function getAuthErrorMessage(error) {
 export function createTouristSavePage({ path = '/t-save' } = {}) {
   let mounted = false
   let destroyed = false
-  let authenticated = false
+  let journeySaved = false
   let isSubmitting = false
   let accountMode = ACCOUNT_MODES.REGISTER
   let profileLoad = null
+  let journeySave = null
+  let journeyOwner = null
+  let journeyOwnerProfile = null
 
   const header = createSiteHeader({ currentPath: path })
   const content = createElement('div', {
@@ -356,19 +405,90 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
   let headerCleanup = () => {}
   let authCleanup = () => {}
 
-  const renderAuthenticated = (user, profile) => {
-    if (authenticated || destroyed) {
+  const renderSaved = (user, profile) => {
+    if (journeySaved || destroyed) {
       return
     }
 
-    authenticated = true
-    const success = createAuthenticatedState(user, profile)
+    journeySaved = true
+    const success = createSavedState(user, profile)
     content.replaceChildren(success.element)
     window.requestAnimationFrame(() => {
       if (!destroyed && success.heading.isConnected) {
         success.heading.focus({ preventScroll: true })
       }
     })
+  }
+
+  const renderSaveFailure = (error) => {
+    if (destroyed) {
+      return
+    }
+
+    const pendingMissing = error?.code === 'journey/missing-pending'
+    const failure = createSaveFailureState(
+      pendingMissing
+        ? 'This temporary journey is no longer available. Return to the journey result and try saving again.'
+        : 'Your account is ready, but the journey could not be saved. Check your connection and try again.',
+      { canRetry: !pendingMissing },
+    )
+
+    content.replaceChildren(failure.element)
+    window.requestAnimationFrame(() => {
+      if (!destroyed && failure.heading.isConnected) {
+        failure.heading.focus({ preventScroll: true })
+      }
+    })
+  }
+
+  const saveJourneyForUser = (user, profile, retryButton = null) => {
+    if (!user?.uid || journeySaved || destroyed) {
+      return Promise.resolve(null)
+    }
+
+    if (journeySave) {
+      return journeySave
+    }
+
+    journeyOwner = user
+    journeyOwnerProfile = profile
+    const form = page.querySelector('[data-save-gate-form]')
+    isSubmitting = true
+
+    if (form instanceof HTMLFormElement) {
+      setSubmitting(form, true, 'Saving journey…')
+    }
+
+    if (retryButton instanceof HTMLButtonElement) {
+      retryButton.disabled = true
+      retryButton.textContent = 'Saving journey…'
+    }
+
+    const operation = savePendingTouristJourney(user)
+      .then((result) => {
+        if (!destroyed) {
+          form?.reset()
+          renderSaved(user, profile)
+        }
+
+        return result
+      })
+      .catch((error) => {
+        if (!destroyed) {
+          isSubmitting = false
+          renderSaveFailure(error)
+        }
+
+        return null
+      })
+      .finally(() => {
+        if (journeySave === operation) {
+          journeySave = null
+        }
+      })
+
+    journeySave = operation
+    return operation
   }
 
   const setAccountMode = (nextMode) => {
@@ -458,7 +578,7 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
   }
 
   const loadAuthenticatedProfile = (user) => {
-    if (!user?.uid || authenticated || destroyed) {
+    if (!user?.uid || journeySaved || destroyed) {
       return Promise.resolve(null)
     }
 
@@ -481,7 +601,7 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
         }
 
         if (profile) {
-          renderAuthenticated(user, profile)
+          await saveJourneyForUser(user, profile)
         } else {
           showProfileMessage(
             'You are signed in, but this account does not have a RIHLATI profile yet. Sign in with another account or try again later.',
@@ -500,7 +620,7 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
 
         return null
       } finally {
-        if (!destroyed && !authenticated && form instanceof HTMLFormElement && form.isConnected) {
+        if (!destroyed && !journeySaved && form instanceof HTMLFormElement && form.isConnected) {
           setSubmitting(form, false)
         }
       }
@@ -597,7 +717,7 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
 
         if (!destroyed) {
           form.reset()
-          renderAuthenticated(credential.user, profile)
+          await saveJourneyForUser(credential.user, profile)
         }
 
         return
@@ -616,7 +736,7 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
         }
 
         form.reset()
-        renderAuthenticated(credential.user, profile)
+        await saveJourneyForUser(credential.user, profile)
       } catch {
         feedbackMessage = 'You are signed in, but we could not load your RIHLATI profile. Check your connection and try again.'
       }
@@ -625,7 +745,7 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
         feedbackMessage = getAuthErrorMessage(error)
       }
     } finally {
-      if (!destroyed && !authenticated) {
+      if (!destroyed && !journeySaved) {
         setSubmitting(form, false)
 
         if (switchToSignIn) {
@@ -648,6 +768,17 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
 
     if (modeButton instanceof HTMLButtonElement) {
       setAccountMode(modeButton.dataset.saveGateMode)
+      return
+    }
+
+    const retryButton = event.target.closest('[data-save-gate-retry]')
+    if (
+      retryButton instanceof HTMLButtonElement
+      && journeyOwner
+      && journeyOwnerProfile
+      && !isSubmitting
+    ) {
+      void saveJourneyForUser(journeyOwner, journeyOwnerProfile, retryButton)
     }
   }
 
