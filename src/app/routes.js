@@ -1,5 +1,6 @@
 import { createFoundationPage } from '../pages/foundation-page.js'
 import { createAdminDashboardPage } from '../pages/admin-dashboard-page.js'
+import { createAdminContentPage } from '../pages/admin-content-page.js'
 import { createAdminMatchingPage } from '../pages/admin-matching-page.js'
 import { createAdminPartnershipsPage } from '../pages/admin-partnerships-page.js'
 import { createAdminUsersPage } from '../pages/admin-users-page.js'
@@ -37,6 +38,11 @@ export const routes = [
     path: '/admin/matching',
     title: 'Admin Matching | Rihlati — رحلتي',
     createPage: () => createAdminMatchingPage(),
+  },
+  {
+    path: '/admin/content',
+    title: 'Admin Content | Rihlati — رحلتي',
+    createPage: () => createAdminContentPage(),
   },
   {
     path: '/admin/partnerships',
