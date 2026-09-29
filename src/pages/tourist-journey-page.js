@@ -2,10 +2,41 @@ import { createJourneyMapPresentation } from '../components/journey-map-presenta
 import { createSiteHeader, mountSiteHeader } from '../components/site-shell.js'
 import { createCard, createEyebrow, createIcon } from '../components/ui.js'
 import { touristJourneyStops } from '../data/tourist-journey-presentation-data.js'
+import {
+  getTouristAnswers,
+  savePendingJourney,
+} from '../services/guest-session-service.js'
 import { createElement } from '../utils/dom.js'
 
 const QUESTIONNAIRE_PATH = '/t-questionnaire'
 const SAVE_PATH = '/t-save'
+
+function createPendingJourneySnapshot() {
+  return {
+    schemaVersion: 1,
+    journeyKey: 'heritage-desert-escape',
+    title: 'Heritage & Desert Escape',
+    summary: {
+      durationDays: 4,
+      stopCount: touristJourneyStops.length,
+      pace: 'Balanced pace',
+      focus: 'Culture-led',
+    },
+    preferences: getTouristAnswers() ?? {},
+    stops: touristJourneyStops.map((stop) => ({
+      day: stop.day,
+      name: stop.name,
+      nameAr: stop.nameAr,
+      region: stop.region,
+      type: stop.type,
+      time: stop.time,
+      why: stop.why,
+      tip: stop.tip,
+      image: stop.image,
+      imageAlt: stop.imageAlt,
+    })),
+  }
+}
 
 function createSummaryBadge({ label, tone, icon }) {
   return createElement('span', {
@@ -640,6 +671,7 @@ export function createTouristJourneyPage({ path = '/t-journey', router } = {}) {
       }
 
       mounted = true
+      savePendingJourney(createPendingJourneySnapshot())
       headerCleanup = mountSiteHeader(header, { signal: pageController.signal })
       page.addEventListener('click', handleClick, { signal: pageController.signal })
       routeSignal = signal instanceof AbortSignal ? signal : null

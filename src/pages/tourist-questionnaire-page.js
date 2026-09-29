@@ -8,6 +8,10 @@ import {
   createRouteLine,
 } from '../components/ui.js'
 import { routePaths } from '../data/home-presentation-data.js'
+import {
+  getTouristAnswers,
+  saveTouristAnswers,
+} from '../services/guest-session-service.js'
 import { createElement } from '../utils/dom.js'
 
 const GENERATING_PATH = '/t-generating'
@@ -82,6 +86,29 @@ const QUESTIONS = Object.freeze([
     ].map((label) => ({ label })),
   },
 ])
+
+function restoreTouristAnswers() {
+  const storedAnswers = getTouristAnswers()
+  if (!storedAnswers || typeof storedAnswers !== 'object' || Array.isArray(storedAnswers)) {
+    return {}
+  }
+
+  return QUESTIONS.reduce((restored, question) => {
+    const allowedOptions = new Set(question.options.map((option) => option.label))
+    const storedAnswer = storedAnswers[question.key]
+
+    if (question.multi && Array.isArray(storedAnswer)) {
+      const validAnswers = [...new Set(storedAnswer.filter((answer) => allowedOptions.has(answer)))]
+      if (validAnswers.length > 0) {
+        restored[question.key] = validAnswers
+      }
+    } else if (!question.multi && allowedOptions.has(storedAnswer)) {
+      restored[question.key] = storedAnswer
+    }
+
+    return restored
+  }, {})
+}
 
 function createQuestionnaireLogo() {
   return createElement('a', {
@@ -227,7 +254,7 @@ export function createTouristQuestionnairePage({ router } = {}) {
 
   let currentStep = 0
   let direction = 'right'
-  let answers = {}
+  let answers = restoreTouristAnswers()
   let mounted = false
   let destroyed = false
 
@@ -418,6 +445,7 @@ export function createTouristQuestionnairePage({ router } = {}) {
       answers = { ...answers, [question.key]: label }
     }
 
+    saveTouristAnswers(answers)
     syncAnswerControls()
   }
 
