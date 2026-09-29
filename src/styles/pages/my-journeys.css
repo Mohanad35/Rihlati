@@ -168,6 +168,58 @@
   text-align: right;
 }
 
+.journey-passport-collection__content {
+  min-width: 0;
+}
+
+.journey-passport-collection__state {
+  display: grid;
+  max-width: 46rem;
+  min-height: 15rem;
+  align-content: center;
+  justify-items: start;
+  margin: 3rem auto 0;
+  border: 1px solid color-mix(in srgb, var(--color-border) 82%, transparent);
+  border-radius: var(--radius-lg);
+  background:
+    radial-gradient(circle at 84% 20%, rgba(213, 167, 67, 0.12), transparent 34%),
+    color-mix(in srgb, var(--color-surface) 88%, transparent);
+  box-shadow: var(--shadow-sm);
+  padding: clamp(2rem, 5vw, 3.5rem);
+}
+
+.journey-passport-collection__state h3 {
+  margin: 0;
+  color: var(--color-brand-dark);
+  font-size: clamp(1.35rem, 3vw, 1.8rem);
+}
+
+.journey-passport-collection__state p {
+  max-width: 38rem;
+  margin: 0.75rem 0 0;
+  color: var(--color-text-secondary);
+  line-height: 1.7;
+}
+
+.journey-passport-collection__state .button {
+  margin-top: 1.5rem;
+}
+
+.journey-passport-collection__state--loading::before {
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-bottom: 1rem;
+  border: 2px solid color-mix(in srgb, var(--color-brand) 20%, transparent);
+  border-top-color: var(--color-brand);
+  border-radius: 50%;
+  animation: spinRing 900ms linear infinite;
+  content: '';
+}
+
+.journey-passport-collection__state--error {
+  border-color: color-mix(in srgb, var(--color-terracotta) 34%, var(--color-border));
+}
+
 .journey-passport-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr);

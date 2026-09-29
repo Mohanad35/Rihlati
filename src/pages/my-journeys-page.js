@@ -1,13 +1,16 @@
 import { createSiteFooter, createSiteHeader, mountSiteHeader } from '../components/site-shell.js'
 import { createButtonLink, createEyebrow, createIcon } from '../components/ui.js'
 import { routePaths } from '../data/home-presentation-data.js'
-import { savedJourneyPassports } from '../data/my-journeys-presentation-data.js'
+import { observeAuthState } from '../services/auth-service.js'
+import { getCurrentUserJourneys } from '../services/journey-service.js'
 import { createElement } from '../utils/dom.js'
 import { mountRevealObserver } from '../utils/reveal.js'
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
 const JOURNEY_PATH = '/t-journey'
 const QUESTIONNAIRE_PATH = '/t-questionnaire'
+const SAVE_PATH = '/t-save'
+const PASSPORT_TONES = ['teal', 'forest', 'terracotta']
 const FOCUSABLE_SELECTOR = [
   'a[href]',
   'button:not([disabled])',
@@ -168,7 +171,11 @@ function createHero() {
                   }),
                   createElement('span', {
                     className: 'my-journeys-hero__count',
-                    text: `${savedJourneyPassports.length} journey passports`,
+                    text: 'Loading journey passports…',
+                    attributes: {
+                      'data-my-journeys-count': true,
+                      'aria-live': 'polite',
+                    },
                   }),
                 ],
               }),
@@ -335,8 +342,15 @@ function createPassportCard(journey) {
   })
 }
 
-function createCollection() {
-  return createElement('section', {
+function createCollectionShell() {
+  const content = createElement('div', {
+    className: 'journey-passport-collection__content',
+    attributes: {
+      'data-my-journeys-content': true,
+      'aria-live': 'polite',
+    },
+  })
+  const element = createElement('section', {
     className: 'container journey-passport-collection',
     attributes: { 'aria-labelledby': 'journey-passport-collection-title' },
     children: [
@@ -360,12 +374,85 @@ function createCollection() {
           }),
         ],
       }),
-      createElement('ol', {
-        className: 'journey-passport-grid',
-        children: savedJourneyPassports.map(createPassportCard),
-      }),
+      content,
     ],
   })
+
+  return { element, content }
+}
+
+function createPassportGrid(journeys) {
+  return createElement('ol', {
+    className: 'journey-passport-grid',
+    children: journeys.map(createPassportCard),
+  })
+}
+
+function createCollectionState({ title, copy, type = 'status', action = null }) {
+  return createElement('div', {
+    className: `journey-passport-collection__state journey-passport-collection__state--${type}`,
+    attributes: {
+      role: type === 'error' ? 'alert' : 'status',
+    },
+    children: [
+      createElement('h3', { text: title }),
+      createElement('p', { text: copy }),
+      ...(action ? [action] : []),
+    ],
+  })
+}
+
+function formatSavedDate(timestamp) {
+  const date = typeof timestamp?.toDate === 'function'
+    ? timestamp.toDate()
+    : new Date(timestamp ?? Number.NaN)
+
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    return 'Saved Journey'
+  }
+
+  return `Saved ${new Intl.DateTimeFormat('en', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(date)}`
+}
+
+function mapJourneyToPassport(journey, index) {
+  const summary = journey.summary && typeof journey.summary === 'object'
+    ? journey.summary
+    : {}
+  const destinations = Array.isArray(journey.stops)
+    ? journey.stops.map((stop) => ({
+        day: stop.day,
+        name: stop.name,
+        nameAr: stop.nameAr,
+      }))
+    : []
+  const durationDays = Number.isInteger(summary.durationDays) ? summary.durationDays : 0
+  const stopCount = Number.isInteger(summary.stopCount) ? summary.stopCount : destinations.length
+  const duration = `${durationDays} ${durationDays === 1 ? 'day' : 'days'}`
+  const mood = [summary.pace, summary.focus].filter(Boolean).join(' · ')
+  const referenceSuffix = String(journey.id ?? journey.journeyKey ?? index + 1)
+    .replace(/[^a-z0-9]/gi, '')
+    .slice(0, 8)
+    .toUpperCase()
+
+  return {
+    id: journey.id,
+    reference: `RJ-${referenceSuffix || String(index + 1).padStart(3, '0')}`,
+    title: journey.title,
+    duration,
+    stops: stopCount,
+    mood,
+    updated: formatSavedDate(journey.createdAt),
+    status: 'Saved Journey',
+    tone: PASSPORT_TONES[index % PASSPORT_TONES.length],
+    summary: [duration, `${stopCount} ${stopCount === 1 ? 'stop' : 'stops'}`, mood]
+      .filter(Boolean)
+      .join(' · '),
+    destinations,
+  }
 }
 
 function createDialogDestinationList(journey) {
@@ -522,24 +609,130 @@ export function createMyJourneysPage({ path = routePaths.myJourneys } = {}) {
   let mounted = false
   let destroyed = false
   let routeSignal = null
+  let currentUser = null
+  let currentJourneys = []
+  let loadRequest = 0
   let activeDialog = null
   let activeDialogController = null
   let activeDialogOpener = null
   let previousBodyOverflow = ''
 
   const header = createSiteHeader({ currentPath: path })
+  const collection = createCollectionShell()
   const main = createElement('main', {
     className: 'my-journeys-main',
     attributes: { id: 'main-content', tabindex: '-1' },
-    children: [createHero(), createCollection()],
+    children: [createHero(), collection.element],
   })
   const page = createElement('div', {
     className: 'my-journeys-page paper',
     children: [header, main, createSiteFooter({ currentPath: path })],
   })
   const pageController = new AbortController()
+  const countIndicator = page.querySelector('[data-my-journeys-count]')
   let headerCleanup = () => {}
   let revealCleanup = () => {}
+  let authCleanup = () => {}
+
+  const setJourneyCount = (copy) => {
+    if (countIndicator) {
+      countIndicator.textContent = copy
+    }
+  }
+
+  const refreshRevealObserver = () => {
+    revealCleanup()
+    revealCleanup = mountRevealObserver(page)
+  }
+
+  const renderLoading = () => {
+    currentJourneys = []
+    setJourneyCount('Loading journey passports…')
+    collection.content.replaceChildren(createCollectionState({
+      title: 'Opening your journey collection…',
+      copy: 'Rihlati is retrieving the journeys saved to your account.',
+      type: 'loading',
+    }))
+  }
+
+  const renderUnauthenticated = () => {
+    currentJourneys = []
+    setJourneyCount('Sign in to view journeys')
+    collection.content.replaceChildren(createCollectionState({
+      title: 'Your journey passports are private',
+      copy: 'Sign in through the journey save gate to view routes saved to your RIHLATI account.',
+      type: 'empty',
+      action: createButtonLink({
+        href: SAVE_PATH,
+        label: 'Sign in to RIHLATI',
+        arrow: true,
+      }),
+    }))
+  }
+
+  const renderEmpty = () => {
+    currentJourneys = []
+    setJourneyCount('0 journey passports')
+    collection.content.replaceChildren(createCollectionState({
+      title: 'Your first journey passport is waiting',
+      copy: 'Plan a personalized route through Jordan, then save it to begin your collection.',
+      type: 'empty',
+      action: createButtonLink({
+        href: routePaths.touristEntry,
+        label: 'Plan a journey',
+        arrow: true,
+      }),
+    }))
+  }
+
+  const renderError = () => {
+    currentJourneys = []
+    setJourneyCount('Journeys unavailable')
+    collection.content.replaceChildren(createCollectionState({
+      title: 'We couldn’t open your journeys',
+      copy: 'Check your connection and try loading your saved journey passports again.',
+      type: 'error',
+      action: createElement('button', {
+        className: 'button button--primary',
+        text: 'Try again',
+        attributes: {
+          type: 'button',
+          'data-my-journeys-action': 'retry-load',
+        },
+      }),
+    }))
+  }
+
+  const renderJourneys = (journeys) => {
+    currentJourneys = journeys.map(mapJourneyToPassport)
+    const count = currentJourneys.length
+    setJourneyCount(`${count} journey ${count === 1 ? 'passport' : 'passports'}`)
+    collection.content.replaceChildren(createPassportGrid(currentJourneys))
+    refreshRevealObserver()
+  }
+
+  const loadJourneys = async (user) => {
+    const requestId = ++loadRequest
+    renderLoading()
+
+    try {
+      const journeys = await getCurrentUserJourneys(user)
+
+      if (destroyed || requestId !== loadRequest) {
+        return
+      }
+
+      if (journeys.length === 0) {
+        renderEmpty()
+      } else {
+        renderJourneys(journeys)
+      }
+    } catch {
+      if (!destroyed && requestId === loadRequest) {
+        renderError()
+      }
+    }
+  }
 
   const closeQuickPeek = ({ restoreFocus = true } = {}) => {
     if (!activeDialog) {
@@ -661,13 +854,18 @@ export function createMyJourneysPage({ path = routePaths.myJourneys } = {}) {
     }
 
     if (action === 'quick-peek') {
-      const journey = savedJourneyPassports.find(
+      const journey = currentJourneys.find(
         (item) => item.id === actionControl.dataset.journeyId,
       )
 
       if (journey) {
         openQuickPeek(journey, actionControl)
       }
+      return
+    }
+
+    if (action === 'retry-load' && currentUser) {
+      void loadJourneys(currentUser)
     }
   }
 
@@ -685,6 +883,17 @@ export function createMyJourneysPage({ path = routePaths.myJourneys } = {}) {
       headerCleanup = mountSiteHeader(header, { signal: pageController.signal })
       revealCleanup = mountRevealObserver(page)
       page.addEventListener('click', handleClick, { signal: pageController.signal })
+      authCleanup = observeAuthState((user) => {
+        currentUser = user
+        loadRequest += 1
+
+        if (!user) {
+          renderUnauthenticated()
+          return
+        }
+
+        void loadJourneys(user)
+      })
       routeSignal = signal instanceof AbortSignal ? signal : null
       routeSignal?.addEventListener('abort', handleRouteAbort, { once: true })
     },
@@ -695,10 +904,12 @@ export function createMyJourneysPage({ path = routePaths.myJourneys } = {}) {
       }
 
       destroyed = true
+      loadRequest += 1
       routeSignal?.removeEventListener('abort', handleRouteAbort)
       routeSignal = null
       closeQuickPeek({ restoreFocus: false })
       pageController.abort()
+      authCleanup()
       headerCleanup()
       revealCleanup()
     },
