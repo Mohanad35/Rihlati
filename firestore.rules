@@ -1,0 +1,77 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return isAuthenticated() && request.auth.uid == uid;
+    }
+
+    function isAdmin() {
+      return isAuthenticated()
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function hasApprovedPersonas(personas) {
+      return personas is list
+        && (
+          personas == ['tourist']
+          || personas == ['investor']
+          || personas == ['tourist', 'investor']
+          || personas == ['investor', 'tourist']
+        );
+    }
+
+    function hasSafeUserProfile(data) {
+      return data.keys().hasAll([
+          'displayName',
+          'email',
+          'personas',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'displayName',
+          'email',
+          'personas',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.displayName is string
+        && data.email is string
+        && data.email == request.auth.token.email
+        && hasApprovedPersonas(data.personas)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    match /users/{uid} {
+      allow create: if isOwner(uid)
+        && hasSafeUserProfile(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow get: if isOwner(uid) || isAdmin();
+      allow list: if isAdmin();
+
+      allow update: if isOwner(uid)
+        && hasSafeUserProfile(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
+    match /admins/{uid} {
+      allow get: if isOwner(uid);
+      allow list, create, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
