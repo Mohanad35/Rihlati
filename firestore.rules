@@ -48,6 +48,204 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
+    function hasSafeTouristPreferences(preferences) {
+      return preferences is map
+        && preferences.keys().hasOnly([
+          'who',
+          'exp',
+          'style',
+          'pace',
+          'final'
+        ])
+        && (!('who' in preferences) || preferences.who in [
+          'Solo explorer',
+          'Couple',
+          'Family',
+          'Friends'
+        ])
+        && (!('exp' in preferences) || (
+          preferences.exp is list
+          && preferences.exp.size() > 0
+          && preferences.exp.size() <= 8
+          && preferences.exp.toSet().size() == preferences.exp.size()
+          && preferences.exp.toSet().hasOnly([
+            'Ancient heritage',
+            'Desert & stars',
+            'Nature & hikes',
+            'Local food',
+            'Wellness & spa',
+            'Culture & museums',
+            'Beaches & water',
+            'Markets & crafts'
+          ])
+        ))
+        && (!('style' in preferences) || preferences.style in [
+          'Iconic & essential',
+          'Off the beaten path',
+          'Balanced mix',
+          'Immersive & slow'
+        ])
+        && (!('pace' in preferences) || preferences.pace in [
+          'Short & relaxed',
+          'Balanced week',
+          'Full discovery'
+        ])
+        && (!('final' in preferences) || (
+          preferences.final is list
+          && preferences.final.size() > 0
+          && preferences.final.size() <= 5
+          && preferences.final.toSet().size() == preferences.final.size()
+          && preferences.final.toSet().hasOnly([
+            'Prefer warm weather',
+            'Overnight in the desert',
+            'Keep travel time low',
+            'Include a rest day',
+            'Sunset moments'
+          ])
+        ));
+    }
+
+    function hasSafeJourneySummary(summary) {
+      return summary is map
+        && summary.keys().hasAll([
+          'durationDays',
+          'stopCount',
+          'pace',
+          'focus'
+        ])
+        && summary.keys().hasOnly([
+          'durationDays',
+          'stopCount',
+          'pace',
+          'focus'
+        ])
+        && summary.durationDays is int
+        && summary.durationDays > 0
+        && summary.durationDays <= 30
+        && summary.stopCount is int
+        && summary.stopCount > 0
+        && summary.stopCount <= 30
+        && summary.pace is string
+        && summary.pace.size() > 0
+        && summary.pace.size() <= 80
+        && summary.focus is string
+        && summary.focus.size() > 0
+        && summary.focus.size() <= 80;
+    }
+
+    function hasSafeJourneyStop(stop) {
+      return stop is map
+        && stop.keys().hasAll([
+          'day',
+          'name',
+          'nameAr',
+          'region',
+          'type',
+          'time',
+          'why',
+          'tip',
+          'image',
+          'imageAlt'
+        ])
+        && stop.keys().hasOnly([
+          'day',
+          'name',
+          'nameAr',
+          'region',
+          'type',
+          'time',
+          'why',
+          'tip',
+          'image',
+          'imageAlt'
+        ])
+        && stop.day is int
+        && stop.day > 0
+        && stop.day <= 30
+        && stop.name is string
+        && stop.name.size() > 0
+        && stop.name.size() <= 120
+        && stop.nameAr is string
+        && stop.nameAr.size() <= 120
+        && stop.region is string
+        && stop.region.size() > 0
+        && stop.region.size() <= 120
+        && stop.type is string
+        && stop.type.size() > 0
+        && stop.type.size() <= 120
+        && stop.time is string
+        && stop.time.size() > 0
+        && stop.time.size() <= 80
+        && stop.why is string
+        && stop.why.size() > 0
+        && stop.why.size() <= 1000
+        && stop.tip is string
+        && stop.tip.size() > 0
+        && stop.tip.size() <= 1000
+        && stop.image is string
+        && stop.image.size() > 0
+        && stop.image.size() <= 500
+        && stop.imageAlt is string
+        && stop.imageAlt.size() > 0
+        && stop.imageAlt.size() <= 300;
+    }
+
+    function hasSafeJourney(data) {
+      return data.keys().hasAll([
+          'ownerId',
+          'schemaVersion',
+          'journeyKey',
+          'title',
+          'summary',
+          'preferences',
+          'stops',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId',
+          'schemaVersion',
+          'journeyKey',
+          'title',
+          'summary',
+          'preferences',
+          'stops',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.ownerId is string
+        && data.schemaVersion is int
+        && data.schemaVersion == 1
+        && data.journeyKey is string
+        && data.journeyKey.size() > 0
+        && data.journeyKey.size() <= 120
+        && data.title is string
+        && data.title.size() > 0
+        && data.title.size() <= 160
+        && hasSafeJourneySummary(data.summary)
+        && hasSafeTouristPreferences(data.preferences)
+        && data.stops is list
+        && data.stops.size() >= 1
+        && data.stops.size() <= 10
+        && hasSafeJourneyStop(data.stops[0])
+        && (data.stops.size() < 2 || hasSafeJourneyStop(data.stops[1]))
+        && (data.stops.size() < 3 || hasSafeJourneyStop(data.stops[2]))
+        && (data.stops.size() < 4 || hasSafeJourneyStop(data.stops[3]))
+        && (data.stops.size() < 5 || hasSafeJourneyStop(data.stops[4]))
+        && (data.stops.size() < 6 || hasSafeJourneyStop(data.stops[5]))
+        && (data.stops.size() < 7 || hasSafeJourneyStop(data.stops[6]))
+        && (data.stops.size() < 8 || hasSafeJourneyStop(data.stops[7]))
+        && (data.stops.size() < 9 || hasSafeJourneyStop(data.stops[8]))
+        && (data.stops.size() < 10 || hasSafeJourneyStop(data.stops[9]))
+        && data.summary.stopCount == data.stops.size()
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isJourneyOwner(data) {
+      return isAuthenticated() && data.ownerId == request.auth.uid;
+    }
+
     match /users/{uid} {
       allow create: if isOwner(uid)
         && hasSafeUserProfile(request.resource.data)
@@ -68,6 +266,25 @@ service cloud.firestore {
     match /admins/{uid} {
       allow get: if isOwner(uid);
       allow list, create, update, delete: if false;
+    }
+
+    match /journeys/{journeyId} {
+      allow create: if isAuthenticated()
+        && request.resource.data.ownerId == request.auth.uid
+        && hasSafeJourney(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow get: if isJourneyOwner(resource.data) || isAdmin();
+      allow list: if isJourneyOwner(resource.data) || isAdmin();
+
+      allow update: if isJourneyOwner(resource.data)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && hasSafeJourney(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
     }
 
     match /{document=**} {
