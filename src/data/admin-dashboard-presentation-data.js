@@ -9,7 +9,12 @@ export const adminDashboardPresentation = Object.freeze({
       href: '/admin/matching',
     }),
     Object.freeze({ id: 'content', label: 'Content', icon: 'content' }),
-    Object.freeze({ id: 'partnerships', label: 'Partnerships', icon: 'partnerships' }),
+    Object.freeze({
+      id: 'partnerships',
+      label: 'Partnerships',
+      icon: 'partnerships',
+      href: '/admin/partnerships',
+    }),
     Object.freeze({ id: 'settings', label: 'Settings', icon: 'settings' }),
   ]),
   metrics: Object.freeze([
