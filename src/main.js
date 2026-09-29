@@ -1,5 +1,6 @@
 import { Router } from './app/router.js'
 import { notFoundRoute, routes } from './app/routes.js'
+import './firebase/firebase-app.js'
 import { mountSkipLink } from './utils/accessibility.js'
 import { requireElement } from './utils/dom.js'
 
