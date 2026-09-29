@@ -13,6 +13,10 @@ import {
   registerWithEmailPassword,
   signInWithEmailPassword,
 } from '../services/auth-service.js'
+import {
+  createUserProfile,
+  getUserProfile,
+} from '../repositories/user-repository.js'
 import { createElement } from '../utils/dom.js'
 
 const JOURNEY_PATH = '/t-journey'
@@ -218,7 +222,8 @@ function createGateState() {
   })
 }
 
-function createAuthenticatedState(user) {
+function createAuthenticatedState(user, profile) {
+  const accountLabel = profile?.displayName?.trim() || user?.email
   const heading = createElement('h1', {
     className: 'tourist-save-success__title',
     text: 'You’re signed in',
@@ -239,9 +244,9 @@ function createAuthenticatedState(user) {
       heading,
       createElement('p', {
         className: 'tourist-save-success__copy',
-        text: user?.email
-          ? `Authenticated as ${user.email}. Your journey has not been saved yet.`
-          : 'Authentication is complete. Your journey has not been saved yet.',
+        text: accountLabel
+          ? `Signed in as ${accountLabel}. Your RIHLATI profile is ready. Your journey has not been saved yet.`
+          : 'Your RIHLATI profile is ready. Your journey has not been saved yet.',
       }),
       createElement('div', {
         className: 'tourist-save-success__actions',
@@ -325,6 +330,7 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
   let authenticated = false
   let isSubmitting = false
   let accountMode = ACCOUNT_MODES.REGISTER
+  let profileLoad = null
 
   const header = createSiteHeader({ currentPath: path })
   const content = createElement('div', {
@@ -350,13 +356,13 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
   let headerCleanup = () => {}
   let authCleanup = () => {}
 
-  const renderAuthenticated = (user) => {
+  const renderAuthenticated = (user, profile) => {
     if (authenticated || destroyed) {
       return
     }
 
     authenticated = true
-    const success = createAuthenticatedState(user)
+    const success = createAuthenticatedState(user, profile)
     content.replaceChildren(success.element)
     window.requestAnimationFrame(() => {
       if (!destroyed && success.heading.isConnected) {
@@ -411,7 +417,7 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
     page.querySelector('#save-gate-email')?.focus()
   }
 
-  const setSubmitting = (form, submitting) => {
+  const setSubmitting = (form, submitting, pendingLabel = '') => {
     isSubmitting = submitting
     form.setAttribute('aria-busy', String(submitting))
     const submitButton = form.querySelector('[data-save-gate-submit]')
@@ -419,9 +425,9 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
     if (submitButton instanceof HTMLButtonElement) {
       submitButton.disabled = submitting
       submitButton.textContent = submitting
-        ? accountMode === ACCOUNT_MODES.REGISTER
+        ? pendingLabel || (accountMode === ACCOUNT_MODES.REGISTER
           ? 'Creating account…'
-          : 'Signing in…'
+          : 'Signing in…')
         : accountMode === ACCOUNT_MODES.REGISTER
           ? 'Create account & continue'
           : 'Sign in & continue'
@@ -430,6 +436,84 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
     page.querySelectorAll('[data-save-gate-mode]').forEach((button) => {
       button.disabled = submitting
     })
+  }
+
+  const showProfileMessage = (message, { switchToSignIn = false } = {}) => {
+    const form = page.querySelector('[data-save-gate-form]')
+
+    if (!(form instanceof HTMLFormElement) || destroyed) {
+      return
+    }
+
+    setSubmitting(form, false)
+
+    if (switchToSignIn) {
+      setAccountMode(ACCOUNT_MODES.SIGN_IN)
+    }
+
+    const status = form.querySelector('[data-save-gate-status]')
+    if (status) {
+      status.textContent = message
+    }
+  }
+
+  const loadAuthenticatedProfile = (user) => {
+    if (!user?.uid || authenticated || destroyed) {
+      return Promise.resolve(null)
+    }
+
+    if (profileLoad?.uid === user.uid) {
+      return profileLoad.promise
+    }
+
+    const promise = (async () => {
+      const form = page.querySelector('[data-save-gate-form]')
+
+      if (form instanceof HTMLFormElement) {
+        setSubmitting(form, true, 'Checking account…')
+      }
+
+      try {
+        const profile = await getUserProfile(user.uid)
+
+        if (destroyed) {
+          return null
+        }
+
+        if (profile) {
+          renderAuthenticated(user, profile)
+        } else {
+          showProfileMessage(
+            'You are signed in, but this account does not have a RIHLATI profile yet. Sign in with another account or try again later.',
+            { switchToSignIn: true },
+          )
+        }
+
+        return profile
+      } catch {
+        if (!destroyed) {
+          showProfileMessage(
+            'You are signed in, but we could not load your RIHLATI profile. Check your connection and try again.',
+            { switchToSignIn: true },
+          )
+        }
+
+        return null
+      } finally {
+        if (!destroyed && !authenticated && form instanceof HTMLFormElement && form.isConnected) {
+          setSubmitting(form, false)
+        }
+      }
+    })()
+
+    profileLoad = { uid: user.uid, promise }
+    void promise.finally(() => {
+      if (profileLoad?.promise === promise) {
+        profileLoad = null
+      }
+    })
+
+    return promise
   }
 
   const handleSubmit = async (event) => {
@@ -461,6 +545,7 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
     }
 
     const status = form.querySelector('[data-save-gate-status]')
+    const nameInput = form.querySelector('#save-gate-full-name')
     const emailInput = form.querySelector('#save-gate-email')
     const passwordInput = form.querySelector('#save-gate-password')
 
@@ -473,23 +558,83 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
     }
 
     setSubmitting(form, true)
+    const submittedMode = accountMode
+    let feedbackMessage = ''
+    let switchToSignIn = false
 
     try {
-      const credential = accountMode === ACCOUNT_MODES.REGISTER
+      const credential = submittedMode === ACCOUNT_MODES.REGISTER
         ? await registerWithEmailPassword(emailInput.value.trim(), passwordInput.value)
         : await signInWithEmailPassword(emailInput.value.trim(), passwordInput.value)
 
-      if (!destroyed) {
+      if (destroyed) {
+        return
+      }
+
+      if (submittedMode === ACCOUNT_MODES.REGISTER) {
+        const displayName = nameInput instanceof HTMLInputElement ? nameInput.value.trim() : ''
+        const authenticatedEmail = credential.user.email
+
+        if (!authenticatedEmail) {
+          feedbackMessage = 'Your account was created, but we could not verify its email for the RIHLATI profile. Please sign in and try again.'
+          switchToSignIn = true
+          return
+        }
+
+        const profile = {
+          displayName,
+          email: authenticatedEmail,
+          personas: ['tourist'],
+        }
+
+        try {
+          await createUserProfile(credential.user.uid, profile)
+        } catch {
+          feedbackMessage = 'Your account was created, but we could not finish its RIHLATI profile. Check your connection, then sign in and try again.'
+          switchToSignIn = true
+          return
+        }
+
+        if (!destroyed) {
+          form.reset()
+          renderAuthenticated(credential.user, profile)
+        }
+
+        return
+      }
+
+      try {
+        const profile = await getUserProfile(credential.user.uid)
+
+        if (destroyed) {
+          return
+        }
+
+        if (!profile) {
+          feedbackMessage = 'You are signed in, but this account does not have a RIHLATI profile yet. Sign in with another account or try again later.'
+          return
+        }
+
         form.reset()
-        renderAuthenticated(credential.user)
+        renderAuthenticated(credential.user, profile)
+      } catch {
+        feedbackMessage = 'You are signed in, but we could not load your RIHLATI profile. Check your connection and try again.'
       }
     } catch (error) {
-      if (!destroyed && status) {
-        status.textContent = getAuthErrorMessage(error)
+      if (!destroyed) {
+        feedbackMessage = getAuthErrorMessage(error)
       }
     } finally {
       if (!destroyed && !authenticated) {
         setSubmitting(form, false)
+
+        if (switchToSignIn) {
+          setAccountMode(ACCOUNT_MODES.SIGN_IN)
+        }
+
+        if (status) {
+          status.textContent = feedbackMessage
+        }
       }
     }
   }
@@ -539,12 +684,12 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
 
       const currentUser = getCurrentUser()
       if (currentUser) {
-        renderAuthenticated(currentUser)
+        void loadAuthenticatedProfile(currentUser)
       }
 
       authCleanup = observeAuthState((user) => {
-        if (user) {
-          renderAuthenticated(user)
+        if (user && !isSubmitting) {
+          void loadAuthenticatedProfile(user)
         }
       })
     },
