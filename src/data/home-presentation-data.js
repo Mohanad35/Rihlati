@@ -7,7 +7,7 @@ export const routePaths = Object.freeze({
   insights: '/insights',
   myJourneys: '/t-my-journeys',
   myInvestments: '/ni-my-investments',
-  adminLogin: '/admin-login',
+  adminLogin: '/admin/login',
 })
 
 export const heroPrinciples = Object.freeze([

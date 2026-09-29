@@ -1,6 +1,8 @@
 import { createFoundationPage } from '../pages/foundation-page.js'
+import { createAdminRouteGuard } from './admin-route-guard.js'
 import { createAdminDashboardPage } from '../pages/admin-dashboard-page.js'
 import { createAdminContentPage } from '../pages/admin-content-page.js'
+import { createAdminLoginPage } from '../pages/admin-login-page.js'
 import { createAdminMatchingPage } from '../pages/admin-matching-page.js'
 import { createAdminPartnershipsPage } from '../pages/admin-partnerships-page.js'
 import { createAdminSettingsPage } from '../pages/admin-settings-page.js'
@@ -26,34 +28,57 @@ import { createTouristSavePage } from '../pages/tourist-save-page.js'
 
 export const routes = [
   {
+    path: '/admin/login',
+    title: 'Admin Sign In | Rihlati — رحلتي',
+    createPage: ({ router, url }) => createAdminLoginPage({ router, url }),
+  },
+  {
     path: '/admin',
     title: 'Admin Dashboard | Rihlati — رحلتي',
-    createPage: () => createAdminDashboardPage(),
+    createPage: (context) => createAdminRouteGuard({
+      context,
+      createPage: createAdminDashboardPage,
+    }),
   },
   {
     path: '/admin/users',
     title: 'Admin Users | Rihlati — رحلتي',
-    createPage: () => createAdminUsersPage(),
+    createPage: (context) => createAdminRouteGuard({
+      context,
+      createPage: createAdminUsersPage,
+    }),
   },
   {
     path: '/admin/matching',
     title: 'Admin Matching | Rihlati — رحلتي',
-    createPage: () => createAdminMatchingPage(),
+    createPage: (context) => createAdminRouteGuard({
+      context,
+      createPage: createAdminMatchingPage,
+    }),
   },
   {
     path: '/admin/content',
     title: 'Admin Content | Rihlati — رحلتي',
-    createPage: () => createAdminContentPage(),
+    createPage: (context) => createAdminRouteGuard({
+      context,
+      createPage: createAdminContentPage,
+    }),
   },
   {
     path: '/admin/partnerships',
     title: 'Admin Partnerships | Rihlati — رحلتي',
-    createPage: () => createAdminPartnershipsPage(),
+    createPage: (context) => createAdminRouteGuard({
+      context,
+      createPage: createAdminPartnershipsPage,
+    }),
   },
   {
     path: '/admin/settings',
     title: 'Admin Settings | Rihlati — رحلتي',
-    createPage: () => createAdminSettingsPage(),
+    createPage: (context) => createAdminRouteGuard({
+      context,
+      createPage: createAdminSettingsPage,
+    }),
   },
   {
     path: '/',

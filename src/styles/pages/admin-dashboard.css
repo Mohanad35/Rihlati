@@ -96,8 +96,11 @@
 }
 
 .admin-sidebar__exit {
+  width: 100%;
   margin-top: auto;
+  cursor: pointer;
   padding: 0.625rem 0.75rem;
+  text-align: left;
 }
 
 .admin-sidebar__exit:hover {
@@ -165,6 +168,7 @@
 }
 
 .admin-topbar__notifications,
+.admin-topbar__sign-out,
 .admin-topbar__avatar {
   display: grid;
   width: 2.5rem;
@@ -174,11 +178,23 @@
   border-radius: var(--radius-pill);
 }
 
-.admin-topbar__notifications {
+.admin-topbar__notifications,
+.admin-topbar__sign-out {
   position: relative;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
   color: var(--color-text-primary);
+}
+
+.admin-topbar__sign-out {
+  display: none;
+  cursor: pointer;
+}
+
+.admin-sidebar__exit:disabled,
+.admin-topbar__sign-out:disabled {
+  cursor: wait;
+  opacity: 0.65;
 }
 
 .admin-topbar__notification-dot {
@@ -404,6 +420,10 @@
 
   .admin-topbar {
     padding-inline: var(--page-gutter);
+  }
+
+  .admin-topbar__sign-out {
+    display: grid;
   }
 
   .admin-mobile-nav {

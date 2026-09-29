@@ -97,10 +97,13 @@ function createAdminSidebar(activeSection) {
         attributes: { 'aria-label': 'Admin sections' },
         children: admin.navigation.map((item) => createNavigationItem(item, activeSection)),
       }),
-      createElement('a', {
+      createElement('button', {
         className: 'admin-sidebar__exit',
-        attributes: { href: '/', 'data-router-link': true },
-        children: [createAdminIcon('logout'), createElement('span', { text: 'Exit admin' })],
+        attributes: {
+          type: 'button',
+          'data-admin-sign-out': true,
+        },
+        children: [createAdminIcon('logout'), createElement('span', { text: 'Sign out' })],
       }),
     ],
   })
@@ -139,6 +142,15 @@ function createAdminTopbar(title, titleId) {
               createAdminIcon('bell'),
               createElement('span', { className: 'admin-topbar__notification-dot' }),
             ],
+          }),
+          createElement('button', {
+            className: 'admin-topbar__sign-out',
+            attributes: {
+              type: 'button',
+              'data-admin-sign-out': true,
+              'aria-label': 'Sign out of Admin',
+            },
+            children: [createAdminIcon('logout')],
           }),
           createElement('span', {
             className: 'admin-topbar__avatar',
