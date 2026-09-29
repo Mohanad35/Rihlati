@@ -7,31 +7,44 @@ import {
   createIcon,
 } from '../components/ui.js'
 import { routePaths } from '../data/home-presentation-data.js'
+import {
+  getCurrentUser,
+  observeAuthState,
+  registerWithEmailPassword,
+  signInWithEmailPassword,
+} from '../services/auth-service.js'
 import { createElement } from '../utils/dom.js'
 
 const JOURNEY_PATH = '/t-journey'
+const ACCOUNT_MODES = Object.freeze({
+  REGISTER: 'register',
+  SIGN_IN: 'sign-in',
+})
 
 const saveGateFields = Object.freeze([
   Object.freeze({
     id: 'save-gate-full-name',
+    name: 'displayName',
     label: 'Full name',
     type: 'text',
-    autocomplete: 'off',
+    autocomplete: 'name',
     error: 'Enter your full name.',
   }),
   Object.freeze({
     id: 'save-gate-email',
+    name: 'email',
     label: 'Email address',
     type: 'email',
-    autocomplete: 'off',
+    autocomplete: 'email',
     error: 'Enter your email address.',
     typeError: 'Enter a valid email address.',
   }),
   Object.freeze({
     id: 'save-gate-password',
+    name: 'password',
     label: 'Password',
     type: 'password',
-    autocomplete: 'off',
+    autocomplete: 'new-password',
     error: 'Enter a password.',
   }),
 ])
@@ -72,26 +85,41 @@ function createSaveExplanation() {
       }),
       createElement('p', {
         className: 'tourist-save__lead',
-        text: 'You explored as a guest. To save your Heritage & Desert Escape and pick up where you left off, we’ll preserve it to your account.',
+        text: 'You explored as a guest. Create an account or sign in now so this journey can be connected to your account when journey saving is enabled.',
       }),
       createJourneyPreview(),
     ],
   })
 }
 
+function createAccountModeButton({ label, mode, active = false }) {
+  return createElement('button', {
+    className: `tourist-save-modes__item${active ? ' is-active' : ''}`,
+    text: label,
+    attributes: {
+      type: 'button',
+      'data-save-gate-mode': mode,
+      'aria-pressed': active,
+    },
+  })
+}
+
 function createAccountModeDisplay() {
   return createElement('div', {
     className: 'tourist-save-modes',
-    attributes: { 'aria-label': 'Account access mode' },
+    attributes: {
+      role: 'group',
+      'aria-label': 'Account access mode',
+    },
     children: [
-      createElement('span', {
-        className: 'tourist-save-modes__item is-active',
-        text: 'Create account',
-        attributes: { 'aria-current': 'true' },
+      createAccountModeButton({
+        label: 'Create account',
+        mode: ACCOUNT_MODES.REGISTER,
+        active: true,
       }),
-      createElement('span', {
-        className: 'tourist-save-modes__item',
-        text: 'Sign in',
+      createAccountModeButton({
+        label: 'Sign in',
+        mode: ACCOUNT_MODES.SIGN_IN,
       }),
     ],
   })
@@ -103,6 +131,7 @@ function createFormField(field) {
     className: 'tourist-save-field__input',
     attributes: {
       id: field.id,
+      name: field.name,
       type: field.type,
       placeholder: field.label,
       required: true,
@@ -116,6 +145,9 @@ function createFormField(field) {
 
   return createElement('div', {
     className: 'tourist-save-field',
+    attributes: {
+      'data-save-gate-field-container': field.name,
+    },
     children: [
       createElement('label', {
         className: 'tourist-save-field__label',
@@ -155,12 +187,23 @@ function createSaveFormCard() {
           }),
           createElement('button', {
             className: 'button button--primary button--full tourist-save-form__submit',
-            text: 'Create account & save',
-            attributes: { type: 'submit' },
+            text: 'Create account & continue',
+            attributes: {
+              type: 'submit',
+              'data-save-gate-submit': true,
+            },
+          }),
+          createElement('p', {
+            className: 'tourist-save-form__status',
+            attributes: {
+              role: 'alert',
+              'aria-live': 'assertive',
+              'data-save-gate-status': true,
+            },
           }),
           createElement('p', {
             className: 'tourist-save-form__note',
-            text: 'Prototype — no real account is created.',
+            text: 'Authentication is secure. Journey saving will be connected in a later step.',
           }),
         ],
       }),
@@ -175,12 +218,10 @@ function createGateState() {
   })
 }
 
-// Presentation-only prototype state. It does not create an account, transmit
-// credentials, or persist a journey, and can be replaced by Firebase later.
-function createPresentationSuccessState() {
+function createAuthenticatedState(user) {
   const heading = createElement('h1', {
     className: 'tourist-save-success__title',
-    text: 'Journey saved',
+    text: 'You’re signed in',
     attributes: {
       id: 'tourist-save-title',
       tabindex: '-1',
@@ -198,7 +239,9 @@ function createPresentationSuccessState() {
       heading,
       createElement('p', {
         className: 'tourist-save-success__copy',
-        text: 'Your Heritage & Desert Escape is in My Journeys.',
+        text: user?.email
+          ? `Authenticated as ${user.email}. Your journey has not been saved yet.`
+          : 'Authentication is complete. Your journey has not been saved yet.',
       }),
       createElement('div', {
         className: 'tourist-save-success__actions',
@@ -250,10 +293,38 @@ function renderFieldValidation(input) {
   return !error
 }
 
+function clearFieldValidation(input) {
+  input.removeAttribute('aria-invalid')
+  const errorElement = document.getElementById(`${input.id}-error`)
+
+  if (errorElement) {
+    errorElement.textContent = ''
+  }
+}
+
+function getAuthErrorMessage(error) {
+  const messages = {
+    'auth/email-already-in-use': 'An account already exists for this email. Try signing in instead.',
+    'auth/invalid-credential': 'The email or password is incorrect. Check your details and try again.',
+    'auth/invalid-email': 'Enter a valid email address.',
+    'auth/network-request-failed': 'We could not reach the authentication service. Check your connection and try again.',
+    'auth/operation-not-allowed': 'Email and password access is currently unavailable. Please try again later.',
+    'auth/too-many-requests': 'Too many attempts were made. Wait a moment, then try again.',
+    'auth/user-disabled': 'This account is currently unavailable. Contact support for help.',
+    'auth/user-not-found': 'The email or password is incorrect. Check your details and try again.',
+    'auth/weak-password': 'Choose a stronger password with at least 6 characters.',
+    'auth/wrong-password': 'The email or password is incorrect. Check your details and try again.',
+  }
+
+  return messages[error?.code] ?? 'We could not complete authentication. Please try again.'
+}
+
 export function createTouristSavePage({ path = '/t-save' } = {}) {
   let mounted = false
   let destroyed = false
-  let saved = false
+  let authenticated = false
+  let isSubmitting = false
+  let accountMode = ACCOUNT_MODES.REGISTER
 
   const header = createSiteHeader({ currentPath: path })
   const content = createElement('div', {
@@ -277,14 +348,15 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
   })
   const pageController = new AbortController()
   let headerCleanup = () => {}
+  let authCleanup = () => {}
 
-  const renderSuccess = () => {
-    if (saved || destroyed) {
+  const renderAuthenticated = (user) => {
+    if (authenticated || destroyed) {
       return
     }
 
-    saved = true
-    const success = createPresentationSuccessState()
+    authenticated = true
+    const success = createAuthenticatedState(user)
     content.replaceChildren(success.element)
     window.requestAnimationFrame(() => {
       if (!destroyed && success.heading.isConnected) {
@@ -293,7 +365,74 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
     })
   }
 
-  const handleSubmit = (event) => {
+  const setAccountMode = (nextMode) => {
+    if (isSubmitting || nextMode === accountMode || !Object.values(ACCOUNT_MODES).includes(nextMode)) {
+      return
+    }
+
+    accountMode = nextMode
+    const form = page.querySelector('[data-save-gate-form]')
+    const nameField = page.querySelector('[data-save-gate-field-container="displayName"]')
+    const nameInput = page.querySelector('#save-gate-full-name')
+    const passwordInput = page.querySelector('#save-gate-password')
+    const submitButton = page.querySelector('[data-save-gate-submit]')
+    const status = page.querySelector('[data-save-gate-status]')
+    const isRegisterMode = accountMode === ACCOUNT_MODES.REGISTER
+
+    page.querySelectorAll('[data-save-gate-mode]').forEach((button) => {
+      const isActive = button.dataset.saveGateMode === accountMode
+      button.classList.toggle('is-active', isActive)
+      button.setAttribute('aria-pressed', String(isActive))
+    })
+
+    if (nameField instanceof HTMLElement && nameInput instanceof HTMLInputElement) {
+      nameField.hidden = !isRegisterMode
+      nameInput.disabled = !isRegisterMode
+      nameInput.required = isRegisterMode
+    }
+
+    if (passwordInput instanceof HTMLInputElement) {
+      passwordInput.autocomplete = isRegisterMode ? 'new-password' : 'current-password'
+    }
+
+    if (form instanceof HTMLFormElement) {
+      form.setAttribute('aria-label', isRegisterMode ? 'Create account' : 'Sign in')
+    }
+
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.textContent = isRegisterMode ? 'Create account & continue' : 'Sign in & continue'
+    }
+
+    if (status) {
+      status.textContent = ''
+    }
+
+    page.querySelectorAll('[data-save-gate-field]').forEach(clearFieldValidation)
+    page.querySelector('#save-gate-email')?.focus()
+  }
+
+  const setSubmitting = (form, submitting) => {
+    isSubmitting = submitting
+    form.setAttribute('aria-busy', String(submitting))
+    const submitButton = form.querySelector('[data-save-gate-submit]')
+
+    if (submitButton instanceof HTMLButtonElement) {
+      submitButton.disabled = submitting
+      submitButton.textContent = submitting
+        ? accountMode === ACCOUNT_MODES.REGISTER
+          ? 'Creating account…'
+          : 'Signing in…'
+        : accountMode === ACCOUNT_MODES.REGISTER
+          ? 'Create account & continue'
+          : 'Sign in & continue'
+    }
+
+    page.querySelectorAll('[data-save-gate-mode]').forEach((button) => {
+      button.disabled = submitting
+    })
+  }
+
+  const handleSubmit = async (event) => {
     const form = event.target
 
     if (!(form instanceof HTMLFormElement) || !form.matches('[data-save-gate-form]')) {
@@ -301,7 +440,11 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
     }
 
     event.preventDefault()
-    const fields = [...form.querySelectorAll('[data-save-gate-field]')]
+    if (isSubmitting) {
+      return
+    }
+
+    const fields = [...form.querySelectorAll('[data-save-gate-field]:not(:disabled)')]
     let firstInvalid = null
 
     fields.forEach((input) => {
@@ -317,8 +460,50 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
       return
     }
 
-    form.reset()
-    renderSuccess()
+    const status = form.querySelector('[data-save-gate-status]')
+    const emailInput = form.querySelector('#save-gate-email')
+    const passwordInput = form.querySelector('#save-gate-password')
+
+    if (!(emailInput instanceof HTMLInputElement) || !(passwordInput instanceof HTMLInputElement)) {
+      return
+    }
+
+    if (status) {
+      status.textContent = ''
+    }
+
+    setSubmitting(form, true)
+
+    try {
+      const credential = accountMode === ACCOUNT_MODES.REGISTER
+        ? await registerWithEmailPassword(emailInput.value.trim(), passwordInput.value)
+        : await signInWithEmailPassword(emailInput.value.trim(), passwordInput.value)
+
+      if (!destroyed) {
+        form.reset()
+        renderAuthenticated(credential.user)
+      }
+    } catch (error) {
+      if (!destroyed && status) {
+        status.textContent = getAuthErrorMessage(error)
+      }
+    } finally {
+      if (!destroyed && !authenticated) {
+        setSubmitting(form, false)
+      }
+    }
+  }
+
+  const handleClick = (event) => {
+    if (!(event.target instanceof Element)) {
+      return
+    }
+
+    const modeButton = event.target.closest('[data-save-gate-mode]')
+
+    if (modeButton instanceof HTMLButtonElement) {
+      setAccountMode(modeButton.dataset.saveGateMode)
+    }
   }
 
   const handleInput = (event) => {
@@ -330,6 +515,11 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
 
     if (input.hasAttribute('aria-invalid')) {
       renderFieldValidation(input)
+    }
+
+    const status = page.querySelector('[data-save-gate-status]')
+    if (status) {
+      status.textContent = ''
     }
   }
 
@@ -345,6 +535,18 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
       headerCleanup = mountSiteHeader(header, { signal: pageController.signal })
       page.addEventListener('submit', handleSubmit, { signal: pageController.signal })
       page.addEventListener('input', handleInput, { signal: pageController.signal })
+      page.addEventListener('click', handleClick, { signal: pageController.signal })
+
+      const currentUser = getCurrentUser()
+      if (currentUser) {
+        renderAuthenticated(currentUser)
+      }
+
+      authCleanup = observeAuthState((user) => {
+        if (user) {
+          renderAuthenticated(user)
+        }
+      })
     },
 
     destroy() {
@@ -355,6 +557,7 @@ export function createTouristSavePage({ path = '/t-save' } = {}) {
       destroyed = true
       page.querySelector('[data-save-gate-form]')?.reset()
       pageController.abort()
+      authCleanup()
       headerCleanup()
     },
   }

@@ -94,8 +94,12 @@
 
 .tourist-save-modes__item {
   flex: 1;
+  border: 0;
   border-radius: var(--radius-pill);
+  background: transparent;
   color: var(--color-text-secondary);
+  cursor: pointer;
+  font-family: inherit;
   font-size: 0.875rem;
   font-weight: var(--font-weight-semibold);
   line-height: 1.5;
@@ -108,6 +112,15 @@
   color: white;
 }
 
+.tourist-save-modes__item:not(.is-active):hover {
+  color: var(--color-brand);
+}
+
+.tourist-save-modes__item:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .tourist-save-form__fields {
   display: grid;
   gap: 0.75rem;
@@ -116,6 +129,10 @@
 
 .tourist-save-field {
   display: grid;
+}
+
+.tourist-save-field[hidden] {
+  display: none;
 }
 
 .tourist-save-field__label {
@@ -168,6 +185,27 @@
 
 .tourist-save-form__submit {
   margin-top: 1.25rem;
+}
+
+.tourist-save-form__submit:disabled {
+  cursor: wait;
+  opacity: 0.72;
+  transform: none;
+}
+
+.tourist-save-form__status {
+  margin: 0.75rem 0 0;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-terracotta) 9%, transparent);
+  color: color-mix(in srgb, var(--color-terracotta) 88%, var(--color-text));
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  padding: 0.625rem 0.75rem;
+  text-align: center;
+}
+
+.tourist-save-form__status:empty {
+  display: none;
 }
 
 .tourist-save-form__note {
