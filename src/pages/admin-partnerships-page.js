@@ -6,7 +6,11 @@ import {
 } from '../data/admin-partnerships-presentation-data.js'
 import { createElement } from '../utils/dom.js'
 import { mountRevealObserver } from '../utils/reveal.js'
-
+import { getCurrentUser } from '../services/auth-service.js'
+import {
+  getAdminPartnershipRequests,
+  updateAdminPartnershipStatus,
+} from '../services/partnership-request-service.js'
 const statusByLabel = new Map(partnershipStatuses.map((status) => [status.label, status]))
 
 function createStatusBadge(statusLabel) {
@@ -224,12 +228,13 @@ function createEmptyDetail() {
   ]
 }
 
-function createPartnershipsView() {
+function createPartnershipsView(initialRequests = []) {
   const state = {
+    requests: initialRequests,
     filter: 'All',
-    selectedRequestId: presentation.requests[0].id,
+    selectedRequestId: initialRequests[0]?.id ?? '',
     statuses: new Map(
-      presentation.requests.map((request) => [request.id, request.initialStatus]),
+      initialRequests.map((request) => [request.id, request.initialStatus]),
     ),
     message: '',
   }
@@ -350,10 +355,12 @@ function createPartnershipsView() {
 
   function getVisibleRequests() {
     if (state.filter === 'All') {
-      return presentation.requests
+      return state.requests
     }
 
-    return presentation.requests.filter((request) => getStatus(request) === state.filter)
+   return state.requests.filter(
+  (request) => getStatus(request) === state.filter
+)
   }
 
   function reconcileSelection(visibleRequests) {
@@ -413,7 +420,7 @@ function createPartnershipsView() {
       )
     }
 
-    const selectedRequest = presentation.requests.find(
+    const selectedRequest = state.requests.find(
       (request) => request.id === state.selectedRequestId,
     )
     detailPanel.replaceChildren(
@@ -447,34 +454,128 @@ function createPartnershipsView() {
     )?.focus({ preventScroll: true })
   }
 
-  function handleChange(event) {
-    const statusSelect = event.target.closest('[data-partnership-status-select]')
-    if (!statusSelect) {
-      return
-    }
+  async function handleChange(event) {
+  const statusSelect = event.target.closest(
+    '[data-partnership-status-select]'
+  )
 
-    const requestId = statusSelect.dataset.partnershipId
-    const request = presentation.requests.find((item) => item.id === requestId)
-    if (!request || !statusByLabel.has(statusSelect.value)) {
-      return
-    }
+  if (!statusSelect) {
+    return
+  }
 
-    state.statuses.set(requestId, statusSelect.value)
-    state.message = `Status changed to ${statusSelect.value} for ${request.business}; this preview is not saved.`
+  const requestId = statusSelect.dataset.partnershipId
+  const request = state.requests.find(
+    (item) => item.id === requestId
+  )
+
+  const nextStatus = statusSelect.value
+
+  if (
+    !request ||
+    !statusByLabel.has(nextStatus)
+  ) {
+    return
+  }
+
+  const previousStatus = getStatus(request)
+
+  if (nextStatus === previousStatus) {
+    return
+  }
+
+  const user = getCurrentUser()
+
+  if (!user) {
+    statusSelect.value = previousStatus
+    state.message = 'You must be signed in as an Admin to update this request.'
+    statusAnnouncement.textContent = state.message
+    return
+  }
+
+  statusSelect.disabled = true
+  statusSelect.setAttribute('aria-busy', 'true')
+
+  state.message =
+    `Updating ${request.business} to ${nextStatus}...`
+
+  statusAnnouncement.textContent = state.message
+
+  try {
+    await updateAdminPartnershipStatus(
+      user,
+      requestId,
+      nextStatus
+    )
+
+    state.statuses.set(
+      requestId,
+      nextStatus
+    )
+
+    state.message =
+      `Status changed to ${nextStatus} for ${request.business}.`
+
     render()
 
     const replacementSelect = main.querySelector(
-      `[data-partnership-status-select][data-partnership-id="${requestId}"]`,
+      `[data-partnership-status-select][data-partnership-id="${requestId}"]`
     )
-    if (replacementSelect) {
-      replacementSelect.focus({ preventScroll: true })
-    } else {
-      filterButtons.get(state.filter)?.focus({ preventScroll: true })
-    }
+
+    replacementSelect?.focus({
+      preventScroll: true,
+    })
+  } catch (error) {
+    console.error(
+      'Failed to update partnership status:',
+      error
+    )
+
+    statusSelect.value = previousStatus
+
+    state.message =
+      `We could not update the status for ${request.business}. Please try again.`
+
+    statusAnnouncement.textContent = state.message
+
+    statusSelect.disabled = false
+    statusSelect.removeAttribute('aria-busy')
+  }
+}
+
+  function setRequests(requests) {
+  const nextRequests = Array.isArray(requests)
+    ? requests
+    : []
+
+  state.requests = nextRequests
+
+  state.statuses = new Map(
+    nextRequests.map((request) => [
+      request.id,
+      request.initialStatus,
+    ]),
+  )
+
+  if (
+    !nextRequests.some(
+      (request) => request.id === state.selectedRequestId
+    )
+  ) {
+    state.selectedRequestId = nextRequests[0]?.id ?? ''
   }
 
+  state.message = ''
+
   render()
-  return { element: main, handleClick, handleChange }
+}
+
+  render()
+  return {
+  element: main,
+  handleClick,
+  handleChange,
+  setRequests,
+}
 }
 
 export function createAdminPartnershipsPage() {
@@ -500,6 +601,25 @@ export function createAdminPartnershipsPage() {
       }
 
       mounted = true
+      const user = getCurrentUser()
+
+if (user) {
+  void getAdminPartnershipRequests(user)
+    .then((requests) => {
+      if (destroyed) {
+        return
+      }
+
+      partnershipsView.setRequests(requests)
+    })
+    .catch((error) => {
+      if (destroyed) {
+        return
+      }
+
+      console.error('Failed to load partnership requests:', error)
+    })
+}
       partnershipsView.element.addEventListener('click', partnershipsView.handleClick, {
         signal: pageController.signal,
       })
