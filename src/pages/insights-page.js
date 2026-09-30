@@ -6,13 +6,14 @@ import {
 } from '../components/site-shell.js'
 import { createBadge, createEyebrow } from '../components/ui.js'
 import { createElement } from '../utils/dom.js'
+import { getPublicContentItems } from '../services/content-service.js'
 
 function createInvestmentInsightCard({
   number,
   label,
   title,
   description,
-  signal,
+  audience,
 }) {
   return createElement('article', {
     className: 'insights-investment-card',
@@ -48,11 +49,11 @@ function createInvestmentInsightCard({
 
         children: [
           createElement('span', {
-            text: 'Signal',
+            text: 'Audience',
           }),
 
           createElement('strong', {
-            text: signal,
+            text: audience,
           }),
         ],
       }),
@@ -60,42 +61,38 @@ function createInvestmentInsightCard({
   })
 }
 
-function createInvestmentInsightsSection() {
-  const insights = [
-    {
-      number: '01',
-      label: 'Traveller demand',
-      title: 'Experience-led stays are becoming more valuable',
-      description:
-        'Travellers increasingly look for accommodation that is connected to local culture, landscape, and memorable activities rather than a room alone.',
-      signal: 'Experience matters',
-    },
+function createInvestmentInsightsSection(items = []) {
+  const insights = items
+    .filter(
+      (item) =>
+        item.contentType === 'Investment Insight',
+    )
+    .map((item, index) => ({
+      number:
+        String(index + 1).padStart(2, '0'),
 
-    {
-      number: '02',
-      label: 'Regional opportunity',
-      title: 'Opportunity exists beyond Jordan’s iconic destinations',
-      description:
-        'Smaller tourism regions can benefit when strong experiences, clear positioning, and better discovery bring the right travellers to them.',
-      signal: 'Regional potential',
-    },
+      label:
+        item.category
+        || 'Tourism insight',
 
-    {
-      number: '03',
-      label: 'Tourism positioning',
-      title: 'Clear audience fit can strengthen an investment concept',
+      title:
+        item.title,
+
       description:
-        'Understanding whether an opportunity serves adventure, wellness, heritage, family, or other traveller segments can sharpen the tourism proposition.',
-      signal: 'Audience fit',
-    },
-  ]
+        item.summary,
+
+      audience:
+        item.targetAudience
+        || 'Investors',
+    }))
 
   return createElement('section', {
     className: 'insights-investment',
 
     attributes: {
       id: 'investment-insights',
-      'aria-labelledby': 'investment-insights-title',
+      'aria-labelledby':
+        'investment-insights-title',
     },
 
     children: [
@@ -104,19 +101,24 @@ function createInvestmentInsightsSection() {
 
         children: [
           createElement('header', {
-            className: 'insights-section-heading',
+            className:
+              'insights-section-heading',
 
             children: [
               createElement('div', {
                 children: [
-                  createEyebrow('Investment Insights'),
+                  createEyebrow(
+                    'Investment Insights',
+                  ),
 
                   createElement('h2', {
                     attributes: {
-                      id: 'investment-insights-title',
+                      id:
+                        'investment-insights-title',
                     },
 
-                    text: 'Understand the opportunity behind the journey.',
+                    text:
+                      'Understand the opportunity behind the journey.',
                   }),
 
                   createElement('p', {
@@ -129,11 +131,13 @@ function createInvestmentInsightsSection() {
           }),
 
           createElement('div', {
-            className: 'insights-investment__grid',
+            className:
+              'insights-investment__grid',
 
-            children: insights.map(
-              createInvestmentInsightCard
-            ),
+            children:
+              insights.map(
+                createInvestmentInsightCard,
+              ),
           }),
         ],
       }),
@@ -191,35 +195,35 @@ function createGuideCard({
   })
 }
 
-function createTravelGuidesSection() {
-  const guides = [
-    {
-      image: homeAssets.wadiRum,
-      location: 'Wadi Rum · Southern Jordan',
-      title: 'A slower way to experience Wadi Rum',
-      description:
-        'Go beyond the quick stop and understand the landscape, desert rhythm, and experiences that make an overnight stay meaningful.',
-    },
+function createTravelGuidesSection(items = []) {
+  const guides = items
+    .filter(
+      (item) =>
+        item.contentType === 'Travel Guide',
+    )
+    .map((item) => ({
+      image:
+        item.imageUrl
+        || homeAssets.petra,
 
-    {
-      image: homeAssets.deadSeaPhoto,
-      location: 'Dead Sea · Jordan Valley',
-      title: 'Planning a restorative Dead Sea escape',
-      description:
-        'A practical guide to balancing wellness, scenery, quiet time, and nearby experiences during a short stay.',
-    },
+      location:
+        item.location
+        || item.category
+        || 'Jordan',
 
-    {
-      image: homeAssets.petra,
-      location: 'Petra · Ma’an',
-      title: 'How to approach Petra beyond the Treasury',
+      title:
+        item.title,
+
       description:
-        'Understand the scale of the site, how to pace your visit, and why Petra deserves more than a rushed photo stop.',
-    },
-  ]
+        item.summary,
+    }))
+
+  const guideCount =
+    String(guides.length).padStart(2, '0')
 
   return createElement('section', {
     className: 'insights-guides',
+
     attributes: {
       id: 'travel-guides',
       'aria-labelledby': 'travel-guides-title',
@@ -242,7 +246,9 @@ function createTravelGuidesSection() {
                     attributes: {
                       id: 'travel-guides-title',
                     },
-                    text: 'Travel with more context.',
+
+                    text:
+                      'Travel with more context.',
                   }),
 
                   createElement('p', {
@@ -253,15 +259,26 @@ function createTravelGuidesSection() {
               }),
 
               createElement('span', {
-                className: 'insights-section-heading__count',
-                text: '03 guides',
+                className:
+                  'insights-section-heading__count',
+
+                text:
+                  `${guideCount} ${
+                    guides.length === 1
+                      ? 'guide'
+                      : 'guides'
+                  }`,
               }),
             ],
           }),
 
           createElement('div', {
             className: 'insights-guides__grid',
-            children: guides.map(createGuideCard),
+
+            children:
+              guides.map(
+                createGuideCard,
+              ),
           }),
         ],
       }),
@@ -322,35 +339,31 @@ function createNewsItem({
   })
 }
 
-function createTourismNewsSection() {
-  const newsItems = [
-    {
-      image: homeAssets.deadSeaPhoto,
-      category: 'Tourism development',
-      date: 'Jordan tourism',
-      title: 'How Jordan’s tourism landscape is evolving',
-      summary:
-        'A closer look at the destinations, experiences, and traveller expectations shaping the next chapter of tourism in Jordan.',
-    },
+function createTourismNewsSection(items = []) {
+  const newsItems = items
+    .filter(
+      (item) =>
+        item.contentType === 'Tourism News',
+    )
+    .map((item) => ({
+      image:
+        item.imageUrl
+        || homeAssets.deadSeaPhoto,
 
-    {
-      image: homeAssets.wadiRum,
-      category: 'Destination update',
-      date: 'Southern Jordan',
-      title: 'Experience-led travel continues to grow',
-      summary:
-        'Travellers are increasingly looking for immersive stays, local context, and meaningful experiences beyond traditional sightseeing.',
-    },
+      category:
+        item.category
+        || 'Tourism update',
 
-    {
-      image: homeAssets.jordanMap,
-      category: 'Industry perspective',
-      date: 'Across Jordan',
-      title: 'Why regional tourism opportunities matter',
+      date:
+        item.location
+        || 'Jordan',
+
+      title:
+        item.title,
+
       summary:
-        'Tourism growth is not limited to iconic destinations. Smaller regions can benefit from better discovery, stronger storytelling, and thoughtful investment.',
-    },
-  ]
+        item.summary,
+    }))
 
   return createElement('section', {
     className: 'insights-news',
@@ -377,7 +390,9 @@ function createTourismNewsSection() {
                     attributes: {
                       id: 'tourism-news-title',
                     },
-                    text: 'What’s shaping tourism in Jordan.',
+
+                    text:
+                      'What’s shaping tourism in Jordan.',
                   }),
 
                   createElement('p', {
@@ -392,9 +407,10 @@ function createTourismNewsSection() {
           createElement('div', {
             className: 'insights-news__grid',
 
-            children: newsItems.map(
-              createNewsItem
-            ),
+            children:
+              newsItems.map(
+                createNewsItem,
+              ),
           }),
         ],
       }),
@@ -560,6 +576,7 @@ function createInsightsHero() {
 export function createInsightsPage({
   path = '/insights',
 } = {}) {
+  
   let mounted = false
   let destroyed = false
   let headerCleanup = () => {}
@@ -570,21 +587,30 @@ export function createInsightsPage({
     currentPath: path,
   })
 
+  let travelGuidesSection =
+  createTravelGuidesSection()
+
+let tourismNewsSection =
+  createTourismNewsSection()
+
+let investmentInsightsSection =
+  createInvestmentInsightsSection()
+
   const main = createElement('main', {
-    className: 'insights-main',
+  className: 'insights-main',
 
-    attributes: {
-      id: 'main-content',
-      tabindex: '-1',
-    },
+  attributes: {
+    id: 'main-content',
+    tabindex: '-1',
+  },
 
-    children: [
-  createInsightsHero(),
-  createTravelGuidesSection(),
-  createTourismNewsSection(),
-  createInvestmentInsightsSection(),
-],
-  })
+  children: [
+    createInsightsHero(),
+    travelGuidesSection,
+    tourismNewsSection,
+    investmentInsightsSection,
+  ],
+})
 
   const page = createElement('div', {
     className: 'insights-page paper',
@@ -607,6 +633,53 @@ export function createInsightsPage({
       }
 
       mounted = true
+
+      void getPublicContentItems()
+  .then((items) => {
+    if (destroyed) {
+      return
+    }
+
+    const nextTravelGuidesSection =
+      createTravelGuidesSection(items)
+
+    const nextTourismNewsSection =
+      createTourismNewsSection(items)
+
+    const nextInvestmentInsightsSection =
+      createInvestmentInsightsSection(items)
+
+    travelGuidesSection.replaceWith(
+      nextTravelGuidesSection,
+    )
+
+    tourismNewsSection.replaceWith(
+      nextTourismNewsSection,
+    )
+
+    investmentInsightsSection.replaceWith(
+      nextInvestmentInsightsSection,
+    )
+
+    travelGuidesSection =
+      nextTravelGuidesSection
+
+    tourismNewsSection =
+      nextTourismNewsSection
+
+    investmentInsightsSection =
+      nextInvestmentInsightsSection
+  })
+  .catch((error) => {
+    if (destroyed) {
+      return
+    }
+
+    console.error(
+      'Failed to load public insights content:',
+      error,
+    )
+  })
 
       headerCleanup = mountSiteHeader(
         header,
