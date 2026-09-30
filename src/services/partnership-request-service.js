@@ -2,6 +2,7 @@ import {
   createPartnershipRequest,
   getAllPartnershipRequests,
   updatePartnershipRequestStatus,
+  getPartnershipRequestsByOwner,
 } from '../repositories/partnership-request-repository.js';
 
 import {
@@ -200,4 +201,27 @@ export async function updateAdminPartnershipStatus(
     requestId,
     status,
   };
+}
+
+export async function getCurrentUserPartnershipRequests(user) {
+  if (!user?.uid) {
+    throw createPartnershipSaveError(
+      'auth-required',
+      'You must be signed in to view your partnership requests.'
+    );
+  }
+
+  const requests = await getPartnershipRequestsByOwner(user.uid);
+
+  return [...requests].sort((a, b) => {
+    const aTime = typeof a.createdAt?.toMillis === 'function'
+      ? a.createdAt.toMillis()
+      : 0;
+
+    const bTime = typeof b.createdAt?.toMillis === 'function'
+      ? b.createdAt.toMillis()
+      : 0;
+
+    return bTime - aTime;
+  });
 }

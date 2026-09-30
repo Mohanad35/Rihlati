@@ -7,6 +7,7 @@ import { createElement } from '../utils/dom.js'
 
 const NEW_INVESTOR_PATH = '/ni-questionnaire'
 const EXISTING_BUSINESS_PATH = '/ei-discovery'
+const PARTNERSHIP_TRACKING_PATH = '/ei-submitted'
 
 const investorPaths = Object.freeze([
   Object.freeze({
@@ -28,6 +29,8 @@ const investorPaths = Object.freeze([
     image: homeAssets.jordanMap,
     cta: 'Discover my fit',
     href: EXISTING_BUSINESS_PATH,
+    secondaryCta: 'Track my partnership request',
+    secondaryHref: PARTNERSHIP_TRACKING_PATH, 
   }),
 ])
 
@@ -66,12 +69,23 @@ function createInvestorPathCard(option) {
             className: 'investor-entry-card__description',
             text: option.description,
           }),
-          createButtonLink({
-            href: option.href,
-            label: option.cta,
-            arrow: true,
-            className: 'investor-entry-card__action',
-          }),
+         createButtonLink({
+  href: option.href,
+  label: option.cta,
+  arrow: true,
+  className: 'investor-entry-card__action',
+}),
+
+...(option.secondaryCta && option.secondaryHref
+  ? [
+      createButtonLink({
+        href: option.secondaryHref,
+        label: option.secondaryCta,
+        variant: 'outline',
+        className: 'investor-entry-card__action',
+      }),
+    ]
+  : []),
         ],
       }),
     ],

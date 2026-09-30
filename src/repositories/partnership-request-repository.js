@@ -5,6 +5,8 @@ import {
   getDocs,
   serverTimestamp,
   updateDoc,
+  query,
+  where,
 } from 'https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js';
 import { firestoreDb } from '../firebase/firestore-db.js';
 
@@ -84,4 +86,22 @@ export async function updatePartnershipRequestStatus(
       updatedAt: serverTimestamp(),
     }
   );
+}
+
+export async function getPartnershipRequestsByOwner(ownerId) {
+  if (!ownerId) {
+    throw new Error('ownerId is required');
+  }
+
+  const partnershipQuery = query(
+    collection(firestoreDb, PARTNERSHIP_REQUESTS_COLLECTION),
+    where('ownerId', '==', ownerId)
+  );
+
+  const snapshot = await getDocs(partnershipQuery);
+
+  return snapshot.docs.map((documentSnapshot) => ({
+    id: documentSnapshot.id,
+    ...documentSnapshot.data(),
+  }));
 }
