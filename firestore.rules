@@ -235,6 +235,46 @@ service cloud.firestore {
       return isAuthenticated() && data.ownerId == request.auth.uid;
     }
 
+    function hasSafeInvestmentEnvelope(data) {
+      return data.keys().hasAll([
+          'ownerId',
+          'schemaVersion',
+          'opportunityKey',
+          'criteria',
+          'matches',
+          'context',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId',
+          'schemaVersion',
+          'opportunityKey',
+          'criteria',
+          'matches',
+          'context',
+          'createdAt',
+          'updatedAt'
+        ])
+        && data.ownerId is string
+        && data.schemaVersion is int
+        && data.schemaVersion == 1
+        && data.opportunityKey is string
+        && data.opportunityKey.size() > 0
+        && data.opportunityKey.size() <= 120
+        && data.criteria is map
+        && data.matches is list
+        && data.matches.size() >= 1
+        && data.matches.size() <= 10
+        && data.context is map
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isInvestmentOwner(data) {
+      return isAuthenticated() && data.ownerId == request.auth.uid;
+    }
+
     match /users/{uid} {
       allow create: if isOwner(uid)
         && hasSafeUserProfile(request.resource.data)
@@ -270,6 +310,25 @@ service cloud.firestore {
       allow update: if isJourneyOwner(resource.data)
         && request.resource.data.ownerId == resource.data.ownerId
         && hasSafeJourneyEnvelope(request.resource.data)
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if false;
+    }
+
+    match /investments/{investmentId} {
+      allow create: if isAuthenticated()
+        && request.resource.data.ownerId == request.auth.uid
+        && hasSafeInvestmentEnvelope(request.resource.data)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow get: if isInvestmentOwner(resource.data) || isAdmin();
+      allow list: if isInvestmentOwner(resource.data) || isAdmin();
+
+      allow update: if isInvestmentOwner(resource.data)
+        && request.resource.data.ownerId == resource.data.ownerId
+        && hasSafeInvestmentEnvelope(request.resource.data)
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt == request.time;
 
