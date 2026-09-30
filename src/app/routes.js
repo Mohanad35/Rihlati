@@ -25,6 +25,7 @@ import { createTouristEntryPage } from '../pages/tourist-entry-page.js'
 import { createTouristJourneyPage } from '../pages/tourist-journey-page.js'
 import { createTouristQuestionnairePage } from '../pages/tourist-questionnaire-page.js'
 import { createTouristSavePage } from '../pages/tourist-save-page.js'
+import { createInsightsPage } from '../pages/insights-page.js'
 
 export const routes = [
   {
@@ -85,6 +86,11 @@ export const routes = [
     title: 'Rihlati — رحلتي | Personalized Jordan Journeys',
     createPage: ({ path }) => createHomePage({ path }),
   },
+  {
+  path: '/insights',
+  title: 'Explore & Insights | Rihlati — رحلتي',
+  createPage: ({ path }) => createInsightsPage({ path }),
+},
   {
     path: '/tourist-entry',
     title: 'Start Your Tourist Journey | Rihlati — رحلتي',
