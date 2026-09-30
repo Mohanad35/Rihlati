@@ -235,6 +235,60 @@ service cloud.firestore {
       return isAuthenticated() && data.ownerId == request.auth.uid;
     }
 
+    function hasCanonicalPartnershipStatus(status) {
+  return status in [
+    'New Request',
+    'Under Review',
+    'Contact Requested',
+    'In Discussion',
+    'Partner'
+  ];
+}
+
+function hasSafePartnershipRequestEnvelope(data) {
+  return data.keys().hasAll([
+      'ownerId',
+      'schemaVersion',
+      'businessProfile',
+      'business',
+      'audienceContext',
+      'placement',
+      'review',
+      'status',
+      'createdAt',
+      'updatedAt'
+    ])
+    && data.keys().hasOnly([
+      'ownerId',
+      'schemaVersion',
+      'businessProfile',
+      'business',
+      'audienceContext',
+      'placement',
+      'review',
+      'status',
+      'createdAt',
+      'updatedAt'
+    ])
+    && data.ownerId is string
+    && data.schemaVersion is int
+    && data.schemaVersion == 1
+    && data.businessProfile is map
+    && data.business is map
+    && data.audienceContext is map
+    && data.placement is map
+    && data.review is map
+    && data.status is string
+    && hasCanonicalPartnershipStatus(data.status)
+    && data.createdAt is timestamp
+    && data.updatedAt is timestamp;
+}
+
+function isPartnershipRequestOwner(data) {
+  return isAuthenticated()
+    && data.ownerId == request.auth.uid;
+}
+
     function hasSafeInvestmentEnvelope(data) {
       return data.keys().hasAll([
           'ownerId',
@@ -334,6 +388,29 @@ service cloud.firestore {
 
       allow delete: if false;
     }
+
+    match /partnershipRequests/{requestId} {
+  allow create: if isAuthenticated()
+    && request.resource.data.ownerId == request.auth.uid
+    && hasSafePartnershipRequestEnvelope(request.resource.data)
+    && request.resource.data.status == 'New Request'
+    && request.resource.data.createdAt == request.time
+    && request.resource.data.updatedAt == request.time;
+
+  allow get: if isPartnershipRequestOwner(resource.data) || isAdmin();
+
+  allow list: if isPartnershipRequestOwner(resource.data) || isAdmin();
+
+  allow update: if isAdmin()
+    && hasSafePartnershipRequestEnvelope(request.resource.data)
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+      'status',
+      'updatedAt'
+    ])
+    && request.resource.data.updatedAt == request.time;
+
+  allow delete: if false;
+}
 
     match /{document=**} {
       allow read, write: if false;
