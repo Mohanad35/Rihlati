@@ -7,6 +7,10 @@ import {
   createIcon,
 } from '../components/ui.js'
 import { routePaths } from '../data/home-presentation-data.js'
+import {
+  getInvestorAnswers,
+  saveInvestorAnswers,
+} from '../services/guest-session-service.js'
 import { createElement } from '../utils/dom.js'
 
 const MATCHING_PATH = '/ni-matching'
@@ -80,6 +84,32 @@ const QUESTIONS = Object.freeze([
     ].map((label) => ({ label })),
   },
 ])
+
+function restoreInvestorAnswers() {
+  const storedAnswers = getInvestorAnswers()
+  if (!storedAnswers || typeof storedAnswers !== 'object' || Array.isArray(storedAnswers)) {
+    return {}
+  }
+
+  return QUESTIONS.reduce((restored, question) => {
+    const allowedOptions = new Set(question.options.map((option) => option.label))
+    const storedAnswer = storedAnswers[question.key]
+
+    if (question.multi) {
+      const validAnswers = Array.isArray(storedAnswer)
+        ? [...new Set(storedAnswer.filter((answer) => allowedOptions.has(answer)))]
+        : []
+
+      if (validAnswers.length > 0) {
+        restored[question.key] = validAnswers
+      }
+    } else if (allowedOptions.has(storedAnswer)) {
+      restored[question.key] = storedAnswer
+    }
+
+    return restored
+  }, {})
+}
 
 function createQuestionnaireLogo() {
   return createElement('a', {
@@ -229,7 +259,7 @@ export function createNewInvestorQuestionnairePage({ router } = {}) {
 
   let currentStep = 0
   let direction = 'right'
-  let answers = {}
+  let answers = restoreInvestorAnswers()
   let mounted = false
   let destroyed = false
 
@@ -417,6 +447,7 @@ export function createNewInvestorQuestionnairePage({ router } = {}) {
       answers = { ...answers, [question.key]: label }
     }
 
+    saveInvestorAnswers(answers)
     syncAnswerControls()
   }
 

@@ -10,11 +10,44 @@ import {
   investorResultContext,
   investorResultMatches,
 } from '../data/investor-result-presentation-data.js'
+import {
+  getInvestorAnswers,
+  savePendingInvestment,
+} from '../services/guest-session-service.js'
 import { createElement } from '../utils/dom.js'
 
 const QUESTIONNAIRE_PATH = '/ni-questionnaire'
 const COMPARE_PATH = '/ni-compare'
 const SAVE_PATH = '/ni-my-investments'
+
+function createOpportunitySnapshot(match) {
+  return {
+    id: match.id,
+    rank: match.rank,
+    region: match.region,
+    mapLabel: match.mapLabel,
+    type: match.type,
+    fit: match.fit,
+    scale: match.scale,
+    segment: match.segment,
+    insight: match.insight,
+  }
+}
+
+function createPendingInvestmentSnapshot(selectedIndex = 0) {
+  const selectedMatch = investorResultMatches[selectedIndex] ?? investorResultMatches[0]
+
+  return {
+    schemaVersion: 1,
+    opportunityKey: selectedMatch.id,
+    criteria: getInvestorAnswers() ?? {},
+    matches: investorResultMatches.map(createOpportunitySnapshot),
+    context: {
+      label: investorResultContext.label,
+      text: investorResultContext.text,
+    },
+  }
+}
 
 function createInvestmentMap(matches, activeIndex = 0) {
   const markers = matches.map((match, index) => {
@@ -377,6 +410,7 @@ export function createInvestorResultPage({ path = '/ni-result' } = {}) {
 
     activeMatchIndex = nextIndex
     map.setActive(activeMatchIndex)
+    savePendingInvestment(createPendingInvestmentSnapshot(activeMatchIndex))
     selectionStatus.textContent = `Selected match ${activeMatchIndex + 1}: ${investorResultMatches[activeMatchIndex].region}.`
   }
 
@@ -389,6 +423,7 @@ export function createInvestorResultPage({ path = '/ni-result' } = {}) {
       }
 
       mounted = true
+      savePendingInvestment(createPendingInvestmentSnapshot(activeMatchIndex))
       headerCleanup = mountSiteHeader(header, { signal: pageController.signal })
       page.addEventListener('click', handleClick, { signal: pageController.signal })
     },

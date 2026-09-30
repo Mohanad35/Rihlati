@@ -6,11 +6,34 @@ import {
   createEyebrow,
 } from '../components/ui.js'
 import { investorResultMatches } from '../data/investor-result-presentation-data.js'
+import {
+  getInvestorCompareSelection,
+  getPendingInvestment,
+  saveInvestorCompareSelection,
+} from '../services/guest-session-service.js'
 import { createElement } from '../utils/dom.js'
 
 const RESULTS_PATH = '/ni-result'
 const QUESTIONNAIRE_PATH = '/ni-questionnaire'
 const SAVE_PATH = '/ni-my-investments'
+
+function createCompareSelection() {
+  const opportunityIds = investorResultMatches.map((match) => match.id)
+  const storedSelection = getInvestorCompareSelection()
+  const pendingInvestment = getPendingInvestment()
+  const restoredId = storedSelection?.selectedOpportunityId
+  const pendingId = pendingInvestment?.opportunityKey
+  const selectedOpportunityId = opportunityIds.includes(restoredId)
+    ? restoredId
+    : opportunityIds.includes(pendingId)
+      ? pendingId
+      : opportunityIds[0]
+
+  return {
+    opportunityIds,
+    selectedOpportunityId,
+  }
+}
 
 const comparisonRows = Object.freeze([
   Object.freeze({
@@ -124,6 +147,7 @@ function createTableCard() {
 export function createInvestorComparePage({ path = '/ni-compare' } = {}) {
   let mounted = false
   let destroyed = false
+  const compareSelection = createCompareSelection()
 
   const header = createSiteHeader({ currentPath: path })
   const pageController = new AbortController()
@@ -205,6 +229,7 @@ export function createInvestorComparePage({ path = '/ni-compare' } = {}) {
       }
 
       mounted = true
+      saveInvestorCompareSelection(compareSelection)
       headerCleanup = mountSiteHeader(header, { signal: pageController.signal })
     },
 

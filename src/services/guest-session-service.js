@@ -1,6 +1,9 @@
 const SESSION_KEYS = Object.freeze({
   touristAnswers: 'rihlati.tourist.answers',
   pendingJourney: 'rihlati.tourist.pendingJourney',
+  investorAnswers: 'rihlati.investor.answers',
+  pendingInvestment: 'rihlati.investor.pendingOpportunity',
+  investorCompareSelection: 'rihlati.investor.compareSelection',
 })
 
 function getSessionStorage() {
@@ -78,4 +81,40 @@ export function getPendingJourney() {
 
 export function clearPendingJourney() {
   remove(SESSION_KEYS.pendingJourney)
+}
+
+export function saveInvestorAnswers(answers) {
+  return writeJson(SESSION_KEYS.investorAnswers, answers)
+}
+
+export function getInvestorAnswers() {
+  return readJson(SESSION_KEYS.investorAnswers)
+}
+
+export function clearInvestorAnswers() {
+  remove(SESSION_KEYS.investorAnswers)
+}
+
+export function savePendingInvestment(investment) {
+  return writeJson(SESSION_KEYS.pendingInvestment, investment)
+}
+
+export function getPendingInvestment() {
+  return readJson(SESSION_KEYS.pendingInvestment)
+}
+
+export function clearPendingInvestment() {
+  remove(SESSION_KEYS.pendingInvestment)
+}
+
+export function saveInvestorCompareSelection(selection) {
+  return writeJson(SESSION_KEYS.investorCompareSelection, selection)
+}
+
+export function getInvestorCompareSelection() {
+  return readJson(SESSION_KEYS.investorCompareSelection)
+}
+
+export function clearInvestorCompareSelection() {
+  remove(SESSION_KEYS.investorCompareSelection)
 }
