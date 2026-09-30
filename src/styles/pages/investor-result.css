@@ -380,6 +380,34 @@
   margin-top: 1rem;
 }
 
+.investor-result__save-status {
+  color: var(--color-brand);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-semibold);
+  margin: 0 0 1rem;
+  min-height: 1.5em;
+}
+
+.investor-result__save-status:empty {
+  display: none;
+}
+
+.investor-result__save-status.is-error {
+  color: var(--color-terracotta);
+}
+
+.investor-result__save-status a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.investor-match-card__save[aria-disabled='true'] {
+  cursor: wait;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
 @media (min-width: 48rem) {
   .investor-result__overview {
     flex-direction: row;

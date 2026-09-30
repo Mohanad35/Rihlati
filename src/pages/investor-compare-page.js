@@ -11,11 +11,14 @@ import {
   getPendingInvestment,
   saveInvestorCompareSelection,
 } from '../services/guest-session-service.js'
+import { getCurrentUser } from '../services/auth-service.js'
+import { savePendingInvestorOpportunity } from '../services/investment-service.js'
 import { createElement } from '../utils/dom.js'
 
 const RESULTS_PATH = '/ni-result'
 const QUESTIONNAIRE_PATH = '/ni-questionnaire'
 const SAVE_PATH = '/ni-my-investments'
+const AUTH_PATH = '/t-save'
 
 function createCompareSelection() {
   const opportunityIds = investorResultMatches.map((match) => match.id)
@@ -144,14 +147,23 @@ function createTableCard() {
   })
 }
 
-export function createInvestorComparePage({ path = '/ni-compare' } = {}) {
+export function createInvestorComparePage({ path = '/ni-compare', router } = {}) {
   let mounted = false
   let destroyed = false
+  let savePending = false
   const compareSelection = createCompareSelection()
 
   const header = createSiteHeader({ currentPath: path })
   const pageController = new AbortController()
   let headerCleanup = () => {}
+  const saveStatus = createElement('p', {
+    className: 'investor-compare__save-status',
+    attributes: {
+      role: 'status',
+      'aria-live': 'polite',
+      'aria-atomic': 'true',
+    },
+  })
 
   const main = createElement('main', {
     className: 'investor-compare-main',
@@ -206,8 +218,10 @@ export function createInvestorComparePage({ path = '/ni-compare' } = {}) {
                 className: 'investor-compare__save',
                 attributes: {
                   'aria-label': `Save best match: ${investorResultMatches[0].region}`,
+                  'data-investment-save': true,
                 },
               }),
+              saveStatus,
             ],
           }),
         ],
@@ -220,6 +234,76 @@ export function createInvestorComparePage({ path = '/ni-compare' } = {}) {
     children: [header, main],
   })
 
+  const handleClick = (event) => {
+    const saveLink = event.target instanceof Element
+      ? event.target.closest('[data-investment-save]')
+      : null
+
+    if (!(saveLink instanceof HTMLAnchorElement)) {
+      return
+    }
+
+    event.preventDefault()
+
+    if (savePending) {
+      return
+    }
+
+    const user = getCurrentUser()
+
+    if (!user) {
+      saveStatus.classList.add('is-error')
+      saveStatus.setAttribute('role', 'alert')
+      saveStatus.replaceChildren(
+        document.createTextNode('Sign in before saving this opportunity. '),
+        createElement('a', {
+          attributes: { href: AUTH_PATH, 'data-router-link': true },
+          text: 'Use the existing account access',
+        }),
+        document.createTextNode(', then return to your comparison.'),
+      )
+      return
+    }
+
+    savePending = true
+    saveLink.setAttribute('aria-disabled', 'true')
+    saveLink.setAttribute('aria-busy', 'true')
+    saveStatus.classList.remove('is-error')
+    saveStatus.setAttribute('role', 'status')
+    saveStatus.textContent = 'Saving your opportunity…'
+
+    void savePendingInvestorOpportunity(user, {
+      selectedOpportunityId: compareSelection.selectedOpportunityId,
+    })
+      .then(async () => {
+        if (destroyed) {
+          return
+        }
+
+        saveStatus.textContent = 'Opportunity saved.'
+        await router?.navigate(SAVE_PATH)
+      })
+      .catch(() => {
+        if (destroyed) {
+          return
+        }
+
+        saveStatus.classList.add('is-error')
+        saveStatus.setAttribute('role', 'alert')
+        saveStatus.textContent = 'We could not save this opportunity. Your comparison is still available — please try again.'
+      })
+      .finally(() => {
+        savePending = false
+
+        if (destroyed) {
+          return
+        }
+
+        saveLink.removeAttribute('aria-disabled')
+        saveLink.removeAttribute('aria-busy')
+      })
+  }
+
   return {
     element: page,
 
@@ -231,6 +315,7 @@ export function createInvestorComparePage({ path = '/ni-compare' } = {}) {
       mounted = true
       saveInvestorCompareSelection(compareSelection)
       headerCleanup = mountSiteHeader(header, { signal: pageController.signal })
+      page.addEventListener('click', handleClick, { signal: pageController.signal })
     },
 
     destroy() {

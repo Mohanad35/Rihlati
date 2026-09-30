@@ -133,12 +133,12 @@ export const routes = [
   {
     path: '/ni-result',
     title: 'Tourism Opportunity Matches | Rihlati — رحلتي',
-    createPage: ({ path }) => createInvestorResultPage({ path }),
+    createPage: ({ path, router }) => createInvestorResultPage({ path, router }),
   },
   {
     path: '/ni-compare',
     title: 'Compare Tourism Opportunities | Rihlati — رحلتي',
-    createPage: ({ path }) => createInvestorComparePage({ path }),
+    createPage: ({ path, router }) => createInvestorComparePage({ path, router }),
   },
   {
     path: '/ni-my-investments',

@@ -142,9 +142,38 @@
 }
 
 .investor-compare__save-row {
+  align-items: center;
   display: flex;
+  gap: 1rem;
   justify-content: flex-end;
   margin-top: 1.5rem;
+}
+
+.investor-compare__save-status {
+  color: var(--color-brand);
+  font-size: 0.875rem;
+  font-weight: var(--font-weight-semibold);
+  margin: 0;
+}
+
+.investor-compare__save-status:empty {
+  display: none;
+}
+
+.investor-compare__save-status.is-error {
+  color: var(--color-terracotta);
+}
+
+.investor-compare__save-status a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
+}
+
+.investor-compare__save[aria-disabled='true'] {
+  cursor: wait;
+  opacity: 0.65;
+  pointer-events: none;
 }
 
 @media (min-width: 48rem) {
@@ -176,6 +205,8 @@
   }
 
   .investor-compare__save-row {
+    align-items: stretch;
+    flex-direction: column;
     justify-content: stretch;
   }
 }

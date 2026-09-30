@@ -14,11 +14,14 @@ import {
   getInvestorAnswers,
   savePendingInvestment,
 } from '../services/guest-session-service.js'
+import { getCurrentUser } from '../services/auth-service.js'
+import { savePendingInvestorOpportunity } from '../services/investment-service.js'
 import { createElement } from '../utils/dom.js'
 
 const QUESTIONNAIRE_PATH = '/ni-questionnaire'
 const COMPARE_PATH = '/ni-compare'
 const SAVE_PATH = '/ni-my-investments'
+const AUTH_PATH = '/t-save'
 
 function createOpportunitySnapshot(match) {
   return {
@@ -263,7 +266,11 @@ function createMatchCard(match) {
                 full: true,
                 arrow: true,
                 className: 'investor-match-card__save',
-                attributes: { 'aria-label': `Save opportunity: ${match.region}` },
+                attributes: {
+                  'aria-label': `Save opportunity: ${match.region}`,
+                  'data-investment-save': true,
+                  'data-opportunity-id': match.id,
+                },
               }),
             ],
           }),
@@ -294,10 +301,11 @@ function createContextualInsight() {
   })
 }
 
-export function createInvestorResultPage({ path = '/ni-result' } = {}) {
+export function createInvestorResultPage({ path = '/ni-result', router } = {}) {
   let activeMatchIndex = 0
   let mounted = false
   let destroyed = false
+  let savePending = false
 
   const header = createSiteHeader({ currentPath: path })
   const pageController = new AbortController()
@@ -306,6 +314,14 @@ export function createInvestorResultPage({ path = '/ni-result' } = {}) {
   const map = createInvestmentMap(investorResultMatches, activeMatchIndex)
   const selectionStatus = createElement('p', {
     className: 'visually-hidden',
+    attributes: {
+      role: 'status',
+      'aria-live': 'polite',
+      'aria-atomic': 'true',
+    },
+  })
+  const saveStatus = createElement('p', {
+    className: 'investor-result__save-status',
     attributes: {
       role: 'status',
       'aria-live': 'polite',
@@ -355,6 +371,7 @@ export function createInvestorResultPage({ path = '/ni-result' } = {}) {
               }),
             ],
           }),
+          saveStatus,
           createElement('div', {
             className: 'investor-result__grid',
             children: [
@@ -389,6 +406,76 @@ export function createInvestorResultPage({ path = '/ni-result' } = {}) {
   })
 
   const handleClick = (event) => {
+    const saveLink = event.target instanceof Element
+      ? event.target.closest('[data-investment-save]')
+      : null
+
+    if (saveLink instanceof HTMLAnchorElement) {
+      event.preventDefault()
+
+      if (savePending) {
+        return
+      }
+
+      const selectedOpportunityId = saveLink.dataset.opportunityId
+      const user = getCurrentUser()
+
+      if (!user) {
+        saveStatus.classList.add('is-error')
+        saveStatus.setAttribute('role', 'alert')
+        saveStatus.replaceChildren(
+          document.createTextNode('Sign in before saving this opportunity. '),
+          createElement('a', {
+            attributes: { href: AUTH_PATH, 'data-router-link': true },
+            text: 'Use the existing account access',
+          }),
+          document.createTextNode(', then return to your investment result.'),
+        )
+        return
+      }
+
+      savePending = true
+      saveStatus.classList.remove('is-error')
+      saveStatus.setAttribute('role', 'status')
+      saveStatus.textContent = 'Saving your opportunity…'
+      page.querySelectorAll('[data-investment-save]').forEach((control) => {
+        control.setAttribute('aria-disabled', 'true')
+        control.setAttribute('aria-busy', 'true')
+      })
+
+      void savePendingInvestorOpportunity(user, { selectedOpportunityId })
+        .then(async () => {
+          if (destroyed) {
+            return
+          }
+
+          saveStatus.textContent = 'Opportunity saved.'
+          await router?.navigate(SAVE_PATH)
+        })
+        .catch(() => {
+          if (destroyed) {
+            return
+          }
+
+          saveStatus.classList.add('is-error')
+          saveStatus.setAttribute('role', 'alert')
+          saveStatus.textContent = 'We could not save this opportunity. Your selection is still available — please try again.'
+        })
+        .finally(() => {
+          savePending = false
+
+          if (destroyed) {
+            return
+          }
+
+          page.querySelectorAll('[data-investment-save]').forEach((control) => {
+            control.removeAttribute('aria-disabled')
+            control.removeAttribute('aria-busy')
+          })
+        })
+      return
+    }
+
     const marker = event.target instanceof Element
       ? event.target.closest('[data-investor-result-action="select-match"]')
       : null
