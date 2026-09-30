@@ -737,3 +737,48 @@ button.admin-content-card {
     grid-column: auto;
   }
 }
+
+.admin-content-form__delete {
+  width: auto;
+  min-height: 2.75rem;
+  border: 1px solid var(--color-terracotta, #c96843);
+  border-radius: 999px;
+  background: transparent;
+  padding: 0.7rem 1.15rem;
+  color: var(--color-terracotta, #c96843);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.admin-content-form__delete:hover {
+  background: var(--color-terracotta, #c96843);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.admin-content-form__delete:focus-visible {
+  outline: 3px solid rgba(201, 104, 67, 0.22);
+  outline-offset: 3px;
+}
+
+.admin-content-form__delete:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-content-form__delete {
+    transition: none;
+  }
+
+  .admin-content-form__delete:hover {
+    transform: none;
+  }
+}

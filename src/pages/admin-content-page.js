@@ -3,6 +3,13 @@ import { createBadge, createCard } from '../components/ui.js'
 import { adminContentPresentation as presentation } from '../data/admin-content-presentation-data.js'
 import { createElement } from '../utils/dom.js'
 import { mountRevealObserver } from '../utils/reveal.js'
+import { getCurrentUser } from '../services/auth-service.js'
+import {
+  createAdminContentItem,
+  deleteAdminContentItem,
+  getAdminContentItems,
+  updateAdminContentItem,
+} from '../services/content-service.js'
 
 const statusTones = Object.freeze({
   Published: 'brand',
@@ -12,6 +19,22 @@ const statusTones = Object.freeze({
 
 function createStatusBadge(status) {
   return createBadge(status, statusTones[status] ?? 'sand', 'admin-content-status')
+}
+
+function formatContentDate(timestamp) {
+  if (typeof timestamp?.toDate === 'function') {
+    return new Intl.DateTimeFormat('en', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    }).format(timestamp.toDate())
+  }
+
+  if (typeof timestamp === 'string' && timestamp.trim()) {
+    return timestamp
+  }
+
+  return 'Unknown date'
 }
 
 function createContentIdentity(item) {
@@ -51,7 +74,8 @@ function createContentRow(item, selected) {
       }),
       createElement('td', { children: [createBadge(item.contentType, 'terracotta')] }),
       createElement('td', { text: item.targetAudience }),
-      createElement('td', { text: item.updatedAt }),
+      createElement('td', {
+  text: formatContentDate(item.updatedAt),}),
       createElement('td', { children: [createStatusBadge(item.status)] }),
       createElement('td', {
         className: 'admin-content-table__action',
@@ -89,7 +113,10 @@ function createContentCard(item, selected) {
             className: 'admin-content-card__meta',
             children: [
               createMetaItem('Audience', item.targetAudience),
-              createMetaItem('Updated', item.updatedAt),
+              createMetaItem(
+  'Updated',
+  formatContentDate(item.updatedAt),
+),
             ],
           }),
           createViewButton(item, selected, 'card'),
@@ -201,6 +228,14 @@ function createEditor(item) {
           value: item.location,
           required: false,
         }),
+        createInputField({
+  id: 'admin-content-image-field',
+  name: 'imageUrl',
+  label: 'Image URL (optional)',
+  value: item.imageUrl ?? '',
+  required: false,
+  full: true,
+}),
         createElement('div', {
           className: 'admin-content-form__field admin-content-form__field--full',
           children: [
@@ -226,20 +261,19 @@ function createEditor(item) {
           value: item.status,
           options: statuses,
         }),
-        createInputField({
-          id: 'admin-content-updated-field',
-          name: 'updatedAt',
-          label: 'Updated',
-          value: item.updatedAt,
-        }),
         createElement('div', {
           className: 'admin-content-form__actions admin-content-form__field--full',
           children: [
             createElement('button', {
-              className: 'admin-content-form__apply',
-              attributes: { type: 'submit', 'data-content-apply': true },
-              text: 'Apply preview changes',
-            }),
+  className: 'admin-content-form__apply',
+  attributes: {
+    type: 'submit',
+    'data-content-apply': true,
+  },
+  text: item.id === '__new__'
+    ? 'Create content'
+    : 'Save changes',
+}),
             createElement('button', {
               className: 'admin-content-form__reset',
               attributes: {
@@ -250,11 +284,24 @@ function createEditor(item) {
             }),
           ],
         }),
+        createElement('button', {
+        className: 'admin-content-form__delete',
+        attributes: {
+          type: 'button',
+          'data-content-delete': item.id,
+        },
+        text: 'Delete content',
+      }),
         createElement('p', {
-          className: 'admin-content-form__note admin-content-form__field--full',
-          attributes: { id: 'admin-content-persistence-note' },
-          text: 'Presentation only · changes reset when this page is destroyed or reloaded.',
-        }),
+  className: 'admin-content-form__note admin-content-form__field--full',
+  attributes: {
+    id: 'admin-content-persistence-note',
+  },
+  text:
+    item.id === '__new__'
+      ? 'Create this item to save it to the RIHLATI content hub.'
+      : 'Changes will be saved to the RIHLATI content hub.',
+}),
       ],
     }),
   ]
@@ -277,29 +324,51 @@ function createEmptyEditor() {
   ]
 }
 
-function createContentView() {
-  const originalItems = new Map(presentation.items.map((item) => [item.id, item]))
+function createContentView(initialItems = []) {
+  const originalItems = new Map(
+    initialItems.map((item) => [
+      item.id,
+      { ...item },
+    ]),
+  )
+
   const state = {
     typeFilter: 'All',
     statusFilter: 'All statuses',
-    selectedId: presentation.items[0].id,
-    items: presentation.items.map((item) => ({ ...item })),
+    selectedId: initialItems[0]?.id ?? '',
+    items: initialItems.map((item) => ({
+      ...item,
+    })),
     message: '',
   }
+
   const typeButtons = new Map()
+
   const tableBody = createElement('tbody')
+
   const mobileList = createElement('ul', {
     className: 'admin-content-mobile-list',
-    attributes: { 'aria-label': 'Content items' },
+    attributes: {
+      'aria-label': 'Content items',
+    },
   })
+
   const resultCount = createElement('p', {
     className: 'admin-content__result-count',
-    attributes: { 'aria-live': 'polite', 'aria-atomic': 'true' },
+    attributes: {
+      'aria-live': 'polite',
+      'aria-atomic': 'true',
+    },
   })
+
   const editAnnouncement = createElement('p', {
     className: 'visually-hidden',
-    attributes: { 'aria-live': 'polite', 'aria-atomic': 'true' },
+    attributes: {
+      'aria-live': 'polite',
+      'aria-atomic': 'true',
+    },
   })
+
   const detailPanel = createCard({
     tagName: 'aside',
     className: 'admin-content-detail reveal',
@@ -311,264 +380,797 @@ function createContentView() {
 
   const typeFilters = createElement('div', {
     className: 'admin-content-type-filters',
-    attributes: { role: 'group', 'aria-label': 'Filter content by type' },
+    attributes: {
+      role: 'group',
+      'aria-label': 'Filter content by type',
+    },
+
     children: presentation.typeFilters.map((filter) => {
       const button = createElement('button', {
         className: 'admin-content-type-filters__button',
+
         attributes: {
           type: 'button',
           'data-content-type-filter': filter.value,
-          'aria-pressed': String(filter.value === state.typeFilter),
+          'aria-pressed': String(
+            filter.value === state.typeFilter,
+          ),
         },
+
         text: filter.label,
       })
-      typeButtons.set(filter.value, button)
+
+      typeButtons.set(
+        filter.value,
+        button,
+      )
+
       return button
     }),
   })
 
   const statusSelect = createElement('select', {
-    attributes: { id: 'admin-content-status-filter', 'data-content-status-filter': true },
-    children: presentation.statusFilters.map((status) =>
-      createElement('option', { attributes: { value: status }, text: status }),
+    attributes: {
+      id: 'admin-content-status-filter',
+      'data-content-status-filter': true,
+    },
+
+    children: presentation.statusFilters.map(
+      (status) =>
+        createElement('option', {
+          attributes: {
+            value: status,
+          },
+          text: status,
+        }),
     ),
   })
 
   const table = createElement('table', {
     className: 'admin-content-table',
+
     children: [
       createElement('caption', {
         className: 'visually-hidden',
         text: 'Explore and Insights content items',
       }),
+
       createElement('thead', {
         children: [
           createElement('tr', {
             children: [
-              createElement('th', { attributes: { scope: 'col' }, text: 'Content' }),
-              createElement('th', { attributes: { scope: 'col' }, text: 'Type' }),
-              createElement('th', { attributes: { scope: 'col' }, text: 'Audience' }),
-              createElement('th', { attributes: { scope: 'col' }, text: 'Updated' }),
-              createElement('th', { attributes: { scope: 'col' }, text: 'Status' }),
-              createElement('th', { attributes: { scope: 'col' }, text: 'Action' }),
+              createElement('th', {
+                attributes: {
+                  scope: 'col',
+                },
+                text: 'Content',
+              }),
+
+              createElement('th', {
+                attributes: {
+                  scope: 'col',
+                },
+                text: 'Type',
+              }),
+
+              createElement('th', {
+                attributes: {
+                  scope: 'col',
+                },
+                text: 'Audience',
+              }),
+
+              createElement('th', {
+                attributes: {
+                  scope: 'col',
+                },
+                text: 'Updated',
+              }),
+
+              createElement('th', {
+                attributes: {
+                  scope: 'col',
+                },
+                text: 'Status',
+              }),
+
+              createElement('th', {
+                attributes: {
+                  scope: 'col',
+                },
+                text: 'Action',
+              }),
             ],
           }),
         ],
       }),
+
       tableBody,
     ],
   })
 
   const main = createElement('main', {
     className: 'admin-content-main animate-fade',
+
     attributes: {
       id: 'main-content',
       tabindex: '-1',
       'aria-labelledby': 'admin-content-title',
     },
+
     children: [
       createElement('div', {
         className: 'admin-content__intro reveal',
+
         children: [
           createElement('div', {
             children: [
-              createElement('p', { className: 'admin-content__eyebrow', text: 'Explore & Insights' }),
-              createElement('h2', { text: 'Content management' }),
               createElement('p', {
-                text: 'Review travel guides, tourism news, investment insights, and stories across the RIHLATI content hub.',
+                className: 'admin-content__eyebrow',
+                text: 'Explore & Insights',
+              }),
+
+              createElement('h2', {
+                text: 'Content management',
+              }),
+
+              createElement('p', {
+                text:
+                  'Review travel guides, tourism news, investment insights, and stories across the RIHLATI content hub.',
               }),
             ],
           }),
-          createElement('button', {
-            className: 'admin-content__new',
-            attributes: {
-              type: 'button',
-              disabled: true,
-              title: 'Content creation will be enabled with the backend phase',
-            },
-            text: 'New content',
-          }),
+
+         createElement('button', {
+  className: 'admin-content__new',
+
+  attributes: {
+    type: 'button',
+    'data-content-new': true,
+  },
+
+  text: 'New content',
+}),
         ],
       }),
+
       createElement('div', {
         className: 'admin-content__toolbar',
+
         children: [
           typeFilters,
+
           createElement('div', {
             className: 'admin-content-status-filter',
+
             children: [
               createElement('label', {
-                attributes: { for: 'admin-content-status-filter' },
+                attributes: {
+                  for: 'admin-content-status-filter',
+                },
+
                 text: 'Status',
               }),
+
               statusSelect,
             ],
           }),
+
           resultCount,
         ],
       }),
+
       createElement('div', {
         className: 'admin-content__layout',
+
         children: [
           createElement('section', {
             className: 'admin-content__items',
-            attributes: { 'aria-label': 'Content list' },
+
+            attributes: {
+              'aria-label': 'Content list',
+            },
+
             children: [
-              createCard({ className: 'admin-content-table-card reveal', children: [table] }),
+              createCard({
+                className:
+                  'admin-content-table-card reveal',
+                children: [table],
+              }),
+
               mobileList,
             ],
           }),
+
           detailPanel,
         ],
       }),
+
       editAnnouncement,
     ],
   })
 
   function getVisibleItems() {
     return state.items.filter((item) => {
-      const typeMatches = state.typeFilter === 'All' || item.contentType === state.typeFilter
-      const statusMatches = state.statusFilter === 'All statuses' || item.status === state.statusFilter
+      const typeMatches =
+        state.typeFilter === 'All'
+        || item.contentType === state.typeFilter
+
+      const statusMatches =
+        state.statusFilter === 'All statuses'
+        || item.status === state.statusFilter
+
       return typeMatches && statusMatches
     })
   }
 
   function reconcileSelection(items) {
-    if (!items.some((item) => item.id === state.selectedId)) {
-      state.selectedId = items[0]?.id ?? ''
+    if (
+      !items.some(
+        (item) =>
+          item.id === state.selectedId,
+      )
+    ) {
+      state.selectedId =
+        items[0]?.id ?? ''
     }
   }
 
   function render() {
-    const visibleItems = getVisibleItems()
-    reconcileSelection(visibleItems)
+    const visibleItems =
+      getVisibleItems()
 
-    for (const [value, button] of typeButtons) {
-      const active = value === state.typeFilter
-      button.classList.toggle('is-active', active)
-      button.setAttribute('aria-pressed', String(active))
+    reconcileSelection(
+      visibleItems,
+    )
+
+    for (
+      const [value, button]
+      of typeButtons
+    ) {
+      const active =
+        value === state.typeFilter
+
+      button.classList.toggle(
+        'is-active',
+        active,
+      )
+
+      button.setAttribute(
+        'aria-pressed',
+        String(active),
+      )
     }
 
-    statusSelect.value = state.statusFilter
-    resultCount.textContent = `${visibleItems.length} ${visibleItems.length === 1 ? 'item' : 'items'}`
+    statusSelect.value =
+      state.statusFilter
+
+    resultCount.textContent =
+      `${visibleItems.length} ${
+        visibleItems.length === 1
+          ? 'item'
+          : 'items'
+      }`
 
     if (visibleItems.length) {
       tableBody.replaceChildren(
-        ...visibleItems.map((item) => createContentRow(item, item.id === state.selectedId)),
+        ...visibleItems.map(
+          (item) =>
+            createContentRow(
+              item,
+              item.id === state.selectedId,
+            ),
+        ),
       )
+
       mobileList.replaceChildren(
-        ...visibleItems.map((item) => createContentCard(item, item.id === state.selectedId)),
+        ...visibleItems.map(
+          (item) =>
+            createContentCard(
+              item,
+              item.id === state.selectedId,
+            ),
+        ),
       )
     } else {
       tableBody.replaceChildren(
         createElement('tr', {
           children: [
             createElement('td', {
-              className: 'admin-content__empty-row',
-              attributes: { colspan: '6' },
-              text: 'No presentation content matches these filters.',
+              className:
+                'admin-content__empty-row',
+
+              attributes: {
+                colspan: '6',
+              },
+
+              text:
+                'No content matches these filters.',
             }),
           ],
         }),
       )
+
       mobileList.replaceChildren(
         createElement('li', {
-          className: 'admin-content__empty-card',
-          text: 'No presentation content matches these filters.',
+          className:
+            'admin-content__empty-card',
+
+          text:
+            'No content matches these filters.',
         }),
       )
     }
 
-    const selectedItem = state.items.find((item) => item.id === state.selectedId)
-    detailPanel.replaceChildren(...(selectedItem ? createEditor(selectedItem) : createEmptyEditor()))
-    editAnnouncement.textContent = state.message
+    const selectedItem =
+      state.items.find(
+        (item) =>
+          item.id === state.selectedId,
+      )
+
+    detailPanel.replaceChildren(
+      ...(
+        selectedItem
+          ? createEditor(selectedItem)
+          : createEmptyEditor()
+      ),
+    )
+
+    editAnnouncement.textContent =
+      state.message
   }
 
-  function handleClick(event) {
-    const filterButton = event.target.closest('[data-content-type-filter]')
+  async function handleClick(event) {
+    const newContentButton =
+  event.target.closest('[data-content-new]')
+
+if (newContentButton) {
+  const draftItem = {
+    id: '__new__',
+    schemaVersion: 1,
+    title: '',
+    contentType: 'Travel Guide',
+    category: '',
+    targetAudience: 'Travellers',
+    location: '',
+    imageUrl: '',
+    summary: '',
+    status: 'Draft',
+    createdAt: null,
+    updatedAt: null,
+  }
+
+  const existingIndex =
+    state.items.findIndex(
+      (item) => item.id === '__new__',
+    )
+
+  if (existingIndex >= 0) {
+    state.items[existingIndex] =
+      draftItem
+  } else {
+    state.items.unshift(
+      draftItem,
+    )
+  }
+
+  state.selectedId = '__new__'
+  state.message = ''
+
+  render()
+
+  main.querySelector(
+    '#admin-content-title-field',
+  )?.focus()
+
+  return
+}
+
+const deleteButton =
+  event.target.closest('[data-content-delete]')
+
+if (deleteButton) {
+  const contentId =
+    deleteButton.dataset.contentDelete
+
+  const item =
+    state.items.find(
+      (contentItem) =>
+        contentItem.id === contentId,
+    )
+
+  if (!item) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    `Delete "${item.title}"?\n\nThis action cannot be undone.`,
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  const user = getCurrentUser()
+
+  if (!user) {
+    state.message =
+      'You must be signed in as an Admin to delete content.'
+
+    editAnnouncement.textContent =
+      state.message
+
+    return
+  }
+
+  deleteButton.disabled = true
+  deleteButton.setAttribute(
+    'aria-busy',
+    'true',
+  )
+
+  state.message =
+    `Deleting ${item.title}...`
+
+  editAnnouncement.textContent =
+    state.message
+
+  try {
+    await deleteAdminContentItem(
+      user,
+      contentId,
+    )
+
+    const items =
+      await getAdminContentItems(user)
+
+    state.selectedId = ''
+
+    setItems(items)
+
+    state.message =
+      `${item.title} was deleted successfully.`
+
+    editAnnouncement.textContent =
+      state.message
+
+    render()
+  } catch (error) {
+    console.error(
+      'Failed to delete content:',
+      error,
+    )
+
+    state.message =
+      error?.message
+      || 'We could not delete this content. Please try again.'
+
+    editAnnouncement.textContent =
+      state.message
+
+    deleteButton.disabled = false
+    deleteButton.removeAttribute(
+      'aria-busy',
+    )
+  }
+
+  return
+}
+
+    const filterButton =
+      event.target.closest(
+        '[data-content-type-filter]',
+      )
+
     if (filterButton) {
-      state.typeFilter = filterButton.dataset.contentTypeFilter
+      state.typeFilter =
+        filterButton.dataset.contentTypeFilter
+
       state.message = ''
+
       render()
+
       return
     }
 
-    const viewButton = event.target.closest('[data-content-id][data-content-view]')
+    const viewButton =
+      event.target.closest(
+        '[data-content-id][data-content-view]',
+      )
+
     if (viewButton) {
-      state.selectedId = viewButton.dataset.contentId
+      state.selectedId =
+        viewButton.dataset.contentId
+
       state.message = ''
-      const view = viewButton.dataset.contentView
+
+      const view =
+        viewButton.dataset.contentView
+
       render()
+
       main.querySelector(
         `[data-content-id="${state.selectedId}"][data-content-view="${view}"]`,
-      )?.focus({ preventScroll: true })
+      )?.focus({
+        preventScroll: true,
+      })
+
       return
     }
 
-    const resetButton = event.target.closest('[data-content-reset]')
+    const resetButton =
+      event.target.closest(
+        '[data-content-reset]',
+      )
+
     if (!resetButton) {
       return
     }
 
-    const itemId = resetButton.dataset.contentReset
-    const original = originalItems.get(itemId)
-    const index = state.items.findIndex((item) => item.id === itemId)
-    if (!original || index < 0) {
+    const itemId =
+      resetButton.dataset.contentReset
+
+    const original =
+      originalItems.get(itemId)
+
+    const index =
+      state.items.findIndex(
+        (item) =>
+          item.id === itemId,
+      )
+
+    if (
+      !original
+      || index < 0
+    ) {
       return
     }
 
-    state.items[index] = { ...original }
-    state.message = `Preview reset for ${original.title}; no stored content was changed.`
+    state.items[index] = {
+      ...original,
+    }
+
+    state.message =
+      `Changes reset for ${original.title}; no stored content was changed.`
+
     render()
-    main.querySelector(`[data-content-reset="${itemId}"]`)?.focus({ preventScroll: true })
+
+    main.querySelector(
+      `[data-content-reset="${itemId}"]`,
+    )?.focus({
+      preventScroll: true,
+    })
   }
 
   function handleChange(event) {
-    const select = event.target.closest('[data-content-status-filter]')
+    const select =
+      event.target.closest(
+        '[data-content-status-filter]',
+      )
+
     if (!select) {
       return
     }
 
-    state.statusFilter = select.value
+    state.statusFilter =
+      select.value
+
     state.message = ''
+
     render()
-    statusSelect.focus({ preventScroll: true })
+
+    statusSelect.focus({
+      preventScroll: true,
+    })
   }
 
-  function handleSubmit(event) {
-    const form = event.target.closest('[data-content-form]')
-    if (!form) {
-      return
+ async function handleSubmit(event) {
+  const form =
+    event.target.closest(
+      '[data-content-form]',
+    )
+
+  if (!form) {
+    return
+  }
+
+  event.preventDefault()
+
+  const itemId =
+    form.dataset.contentId
+
+  const index =
+    state.items.findIndex(
+      (item) =>
+        item.id === itemId,
+    )
+
+  if (index < 0) {
+    return
+  }
+
+  const user = getCurrentUser()
+
+  if (!user) {
+    state.message =
+      'You must be signed in as an Admin to manage content.'
+
+    editAnnouncement.textContent =
+      state.message
+
+    return
+  }
+
+  const fields =
+    new FormData(form)
+
+  const content = {
+    title:
+      String(
+        fields.get('title') ?? '',
+      ).trim(),
+
+    contentType:
+      String(
+        fields.get('contentType') ?? '',
+      ),
+
+    category:
+      String(
+        fields.get('category') ?? '',
+      ).trim(),
+
+    targetAudience:
+      String(
+        fields.get('targetAudience') ?? '',
+      ),
+
+    location:
+      String(
+        fields.get('location') ?? '',
+      ).trim(),
+
+    imageUrl:
+      String(
+        fields.get('imageUrl') ?? '',
+      ).trim(),
+
+    summary:
+      String(
+        fields.get('summary') ?? '',
+      ).trim(),
+
+    status:
+      String(
+        fields.get('status') ?? '',
+      ),
+  }
+
+  const submitButton =
+    form.querySelector(
+      '[data-content-apply]',
+    )
+
+  if (submitButton) {
+    submitButton.disabled = true
+    submitButton.setAttribute(
+      'aria-busy',
+      'true',
+    )
+  }
+
+  state.message =
+    itemId === '__new__'
+      ? 'Creating content...'
+      : 'Saving changes...'
+
+  editAnnouncement.textContent =
+    state.message
+
+  try {
+    if (itemId === '__new__') {
+      const result =
+        await createAdminContentItem(
+          user,
+          content,
+        )
+
+      state.selectedId =
+        result.contentId
+    } else {
+      await updateAdminContentItem(
+        user,
+        itemId,
+        content,
+      )
+
+      state.selectedId =
+        itemId
     }
 
-    event.preventDefault()
-    const itemId = form.dataset.contentId
-    const index = state.items.findIndex((item) => item.id === itemId)
-    if (index < 0) {
-      return
-    }
+    const items =
+      await getAdminContentItems(user)
 
-    const fields = new FormData(form)
-    const updated = {
-      ...state.items[index],
-      title: String(fields.get('title') ?? '').trim(),
-      contentType: String(fields.get('contentType') ?? ''),
-      category: String(fields.get('category') ?? '').trim(),
-      targetAudience: String(fields.get('targetAudience') ?? ''),
-      location: String(fields.get('location') ?? '').trim(),
-      summary: String(fields.get('summary') ?? '').trim(),
-      status: String(fields.get('status') ?? ''),
-      updatedAt: String(fields.get('updatedAt') ?? '').trim(),
-    }
+    setItems(items)
 
-    state.items[index] = updated
-    state.message = `Preview updated for ${updated.title}; changes are not saved.`
+    state.message =
+      itemId === '__new__'
+        ? 'Content created successfully.'
+        : 'Content updated successfully.'
+
+    editAnnouncement.textContent =
+      state.message
+
     render()
-    main.querySelector('[data-content-apply]')?.focus({ preventScroll: true })
+  } catch (error) {
+    console.error(
+      'Failed to save content:',
+      error,
+    )
+
+    state.message =
+      error?.message
+      || 'We could not save this content. Please try again.'
+
+    editAnnouncement.textContent =
+      state.message
+
+    if (submitButton) {
+      submitButton.disabled = false
+      submitButton.removeAttribute(
+        'aria-busy',
+      )
+    }
+  }
+}
+
+  function setItems(items) {
+    const nextItems =
+      Array.isArray(items)
+        ? items
+        : []
+
+    state.items =
+      nextItems.map(
+        (item) => ({
+          ...item,
+        }),
+      )
+
+    originalItems.clear()
+
+    for (const item of nextItems) {
+      originalItems.set(
+        item.id,
+        { ...item },
+      )
+    }
+
+    if (
+      !state.items.some(
+        (item) =>
+          item.id ===
+          state.selectedId,
+      )
+    ) {
+      state.selectedId =
+        state.items[0]?.id ?? ''
+    }
+
+    state.message = ''
+
+    render()
   }
 
   render()
-  return { element: main, handleClick, handleChange, handleSubmit }
+
+  return {
+    element: main,
+    handleClick,
+    handleChange,
+    handleSubmit,
+    setItems,
+  }
 }
 
 export function createAdminContentPage() {
@@ -578,6 +1180,7 @@ export function createAdminContentPage() {
 
   const pageController = new AbortController()
   const contentView = createContentView()
+
   const page = createAdminShell({
     activeSection: 'content',
     title: 'Content',
@@ -594,16 +1197,56 @@ export function createAdminContentPage() {
       }
 
       mounted = true
-      contentView.element.addEventListener('click', contentView.handleClick, {
-        signal: pageController.signal,
-      })
-      contentView.element.addEventListener('change', contentView.handleChange, {
-        signal: pageController.signal,
-      })
-      contentView.element.addEventListener('submit', contentView.handleSubmit, {
-        signal: pageController.signal,
-      })
-      revealCleanup = mountRevealObserver(page)
+
+      const user = getCurrentUser()
+
+      if (user) {
+        void getAdminContentItems(user)
+          .then((items) => {
+            if (destroyed) {
+              return
+            }
+
+            contentView.setItems(items)
+          })
+          .catch((error) => {
+            if (destroyed) {
+              return
+            }
+
+            console.error(
+              'Failed to load content items:',
+              error,
+            )
+          })
+      }
+
+      contentView.element.addEventListener(
+        'click',
+        contentView.handleClick,
+        {
+          signal: pageController.signal,
+        },
+      )
+
+      contentView.element.addEventListener(
+        'change',
+        contentView.handleChange,
+        {
+          signal: pageController.signal,
+        },
+      )
+
+      contentView.element.addEventListener(
+        'submit',
+        contentView.handleSubmit,
+        {
+          signal: pageController.signal,
+        },
+      )
+
+      revealCleanup =
+        mountRevealObserver(page)
     },
 
     destroy() {
