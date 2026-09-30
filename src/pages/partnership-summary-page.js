@@ -1,11 +1,33 @@
 import { createSiteHeader, mountSiteHeader } from '../components/site-shell.js'
 import { createButtonLink, createCard, createEyebrow } from '../components/ui.js'
 import { partnershipSummaryPresentation as summary } from '../data/partnership-summary-presentation-data.js'
+import {
+  getBusinessFlowContext,
+  getBusinessProfile,
+  savePendingPartnership,
+} from '../services/guest-session-service.js'
 import { createElement } from '../utils/dom.js'
 import { mountRevealObserver } from '../utils/reveal.js'
 
 const BACK_PATH = '/ei-simulation'
 const SUBMIT_PATH = '/ei-submitted'
+
+function savePartnershipSnapshot() {
+  const flowContext = getBusinessFlowContext()
+  const profile = getBusinessProfile()
+
+  savePendingPartnership({
+    schemaVersion: 1,
+    businessProfile: profile && typeof profile === 'object' ? profile : {},
+    business: flowContext?.business ?? {},
+    audienceContext: flowContext?.audienceContext ?? {},
+    placement: flowContext?.placement ?? {},
+    review: {
+      title: summary.title,
+      rows: summary.rows.map(({ label, value }) => ({ label, value })),
+    },
+  })
+}
 
 function createSummaryRow({ label, value }) {
   return createElement('div', {
@@ -89,6 +111,7 @@ export function createPartnershipSummaryPage({ path = '/ei-summary' } = {}) {
       }
 
       mounted = true
+      savePartnershipSnapshot()
       headerCleanup = mountSiteHeader(header, { signal: pageController.signal })
       revealCleanup = mountRevealObserver(page)
     },

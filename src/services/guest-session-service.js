@@ -4,6 +4,9 @@ const SESSION_KEYS = Object.freeze({
   investorAnswers: 'rihlati.investor.answers',
   pendingInvestment: 'rihlati.investor.pendingOpportunity',
   investorCompareSelection: 'rihlati.investor.compareSelection',
+  businessProfile: 'rihlati.business.profile',
+  businessFlowContext: 'rihlati.business.flowContext',
+  pendingPartnership: 'rihlati.business.pendingPartnership',
 })
 
 function getSessionStorage() {
@@ -117,4 +120,40 @@ export function getInvestorCompareSelection() {
 
 export function clearInvestorCompareSelection() {
   remove(SESSION_KEYS.investorCompareSelection)
+}
+
+export function saveBusinessProfile(profile) {
+  return writeJson(SESSION_KEYS.businessProfile, profile)
+}
+
+export function getBusinessProfile() {
+  return readJson(SESSION_KEYS.businessProfile)
+}
+
+export function clearBusinessProfile() {
+  remove(SESSION_KEYS.businessProfile)
+}
+
+export function saveBusinessFlowContext(context) {
+  return writeJson(SESSION_KEYS.businessFlowContext, context)
+}
+
+export function getBusinessFlowContext() {
+  return readJson(SESSION_KEYS.businessFlowContext)
+}
+
+export function clearBusinessFlowContext() {
+  remove(SESSION_KEYS.businessFlowContext)
+}
+
+export function savePendingPartnership(partnership) {
+  return writeJson(SESSION_KEYS.pendingPartnership, partnership)
+}
+
+export function getPendingPartnership() {
+  return readJson(SESSION_KEYS.pendingPartnership)
+}
+
+export function clearPendingPartnership() {
+  remove(SESSION_KEYS.pendingPartnership)
 }

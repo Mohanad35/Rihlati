@@ -7,6 +7,10 @@ import {
   createIcon,
 } from '../components/ui.js'
 import { routePaths } from '../data/home-presentation-data.js'
+import {
+  getBusinessProfile,
+  saveBusinessProfile,
+} from '../services/guest-session-service.js'
 import { createElement } from '../utils/dom.js'
 
 const NEXT_PATH = '/ei-match'
@@ -68,6 +72,29 @@ const QUESTIONS = Object.freeze([
     ].map((label) => ({ label })),
   },
 ])
+
+function restoreBusinessProfile() {
+  const savedProfile = getBusinessProfile()
+  if (!savedProfile || typeof savedProfile !== 'object' || Array.isArray(savedProfile)) {
+    return {}
+  }
+
+  return QUESTIONS.reduce((profile, question) => {
+    const allowedOptions = question.options.map(({ label }) => label)
+    const savedAnswer = savedProfile[question.key]
+
+    if (question.multi && Array.isArray(savedAnswer)) {
+      const validAnswers = [...new Set(savedAnswer.filter((answer) => allowedOptions.includes(answer)))]
+      if (validAnswers.length > 0) {
+        profile[question.key] = validAnswers
+      }
+    } else if (!question.multi && allowedOptions.includes(savedAnswer)) {
+      profile[question.key] = savedAnswer
+    }
+
+    return profile
+  }, {})
+}
 
 function createQuestionnaireLogo() {
   return createElement('a', {
@@ -209,7 +236,7 @@ export function createBusinessDiscoveryPage({ router } = {}) {
 
   let currentStep = 0
   let direction = 'right'
-  let answers = {}
+  let answers = restoreBusinessProfile()
   let mounted = false
   let destroyed = false
 
@@ -402,6 +429,7 @@ export function createBusinessDiscoveryPage({ router } = {}) {
       answers = { ...answers, [question.key]: label }
     }
 
+    saveBusinessProfile(answers)
     syncAnswerControls()
   }
 
@@ -441,6 +469,7 @@ export function createBusinessDiscoveryPage({ router } = {}) {
 
     if (action === 'continue' && canContinue()) {
       if (currentStep === QUESTIONS.length - 1) {
+        saveBusinessProfile(answers)
         navigate(NEXT_PATH)
         return
       }

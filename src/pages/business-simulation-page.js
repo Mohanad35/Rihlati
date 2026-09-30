@@ -7,11 +7,42 @@ import {
   createIcon,
 } from '../components/ui.js'
 import { existingBusinessSimulationPresentation as simulation } from '../data/existing-business-simulation-presentation-data.js'
+import {
+  getBusinessFlowContext,
+  saveBusinessFlowContext,
+} from '../services/guest-session-service.js'
 import { createElement } from '../utils/dom.js'
 import { mountRevealObserver } from '../utils/reveal.js'
 
 const BACK_PATH = '/ei-match'
 const PARTNERSHIP_PATH = '/ei-summary'
+
+function savePlacementContext() {
+  const currentContext = getBusinessFlowContext()
+  const businessStop = simulation.journeyStops.find((stop) => stop.type === 'Your business')
+
+  saveBusinessFlowContext({
+    ...(currentContext && typeof currentContext === 'object' ? currentContext : {}),
+    schemaVersion: 1,
+    placement: {
+      recommendation: { ...simulation.recommendation },
+      businessStop: businessStop
+        ? {
+            day: businessStop.day,
+            name: businessStop.name,
+            type: businessStop.type,
+            why: businessStop.why,
+          }
+        : null,
+      journeyStops: simulation.journeyStops.map(({ day, name, type, why }) => ({
+        day,
+        name,
+        type,
+        why,
+      })),
+    },
+  })
+}
 
 function createRecommendationBadge() {
   return createElement('span', {
@@ -163,6 +194,7 @@ export function createBusinessSimulationPage({ path = '/ei-simulation' } = {}) {
       }
 
       mounted = true
+      savePlacementContext()
       headerCleanup = mountSiteHeader(header, { signal: pageController.signal })
       revealCleanup = mountRevealObserver(page)
     },

@@ -9,10 +9,26 @@ import {
   createSectionHeading,
 } from '../components/ui.js'
 import { existingBusinessMatchPresentation as match } from '../data/existing-business-match-presentation-data.js'
+import { saveBusinessFlowContext } from '../services/guest-session-service.js'
 import { createElement } from '../utils/dom.js'
 import { mountRevealObserver } from '../utils/reveal.js'
 
 const PLACEMENT_PATH = '/ei-simulation'
+
+function createMatchFlowContext() {
+  return {
+    schemaVersion: 1,
+    business: { ...match.business },
+    audienceContext: {
+      travellerProfiles: match.travellerProfiles.map(({ label, share }) => ({ label, share })),
+      insights: match.insights.map(({ label, value, description }) => ({
+        label,
+        value,
+        description,
+      })),
+    },
+  }
+}
 
 function createTravellerProfile(profile) {
   const fill = createElement('span', { className: 'business-match-profile__fill' })
@@ -247,6 +263,7 @@ export function createBusinessMatchPage({ path = '/ei-match' } = {}) {
       }
 
       mounted = true
+      saveBusinessFlowContext(createMatchFlowContext())
       headerCleanup = mountSiteHeader(header, { signal: pageController.signal })
       revealCleanup = mountRevealObserver(page)
     },
