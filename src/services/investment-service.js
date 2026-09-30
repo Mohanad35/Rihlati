@@ -1,4 +1,7 @@
-import { createInvestment } from '../repositories/investment-repository.js'
+import {
+  createInvestment,
+  getInvestmentsByOwner,
+} from '../repositories/investment-repository.js'
 import {
   clearInvestorCompareSelection,
   clearPendingInvestment,
@@ -111,4 +114,43 @@ export function savePendingInvestorOpportunity(user, { selectedOpportunityId } =
   void operation.then(releaseSave, releaseSave)
 
   return operation
+}
+
+function getCreatedAtMilliseconds(investment) {
+  if (typeof investment?.createdAt?.toMillis === 'function') {
+    return investment.createdAt.toMillis()
+  }
+
+  const milliseconds = new Date(investment?.createdAt ?? 0).getTime()
+  return Number.isFinite(milliseconds) ? milliseconds : 0
+}
+
+function normalizeInvestment(investment) {
+  return {
+    ...investment,
+    criteria: investment?.criteria && typeof investment.criteria === 'object'
+      ? { ...investment.criteria }
+      : {},
+    matches: Array.isArray(investment?.matches)
+      ? investment.matches.map((match) => ({ ...match }))
+      : [],
+    context: investment?.context && typeof investment.context === 'object'
+      ? { ...investment.context }
+      : {},
+  }
+}
+
+export async function getCurrentUserInvestments(user) {
+  if (!user?.uid) {
+    throw createInvestmentSaveError(
+      'investment/auth-required',
+      'An authenticated user is required to load Investments.',
+    )
+  }
+
+  const investments = await getInvestmentsByOwner(user.uid)
+
+  return investments
+    .map(normalizeInvestment)
+    .sort((first, second) => getCreatedAtMilliseconds(second) - getCreatedAtMilliseconds(first))
 }
