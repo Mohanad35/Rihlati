@@ -3,6 +3,11 @@ import { createBadge, createCard } from '../components/ui.js'
 import { adminMatchingPresentation as presentation } from '../data/admin-matching-presentation-data.js'
 import { createElement } from '../utils/dom.js'
 import { mountRevealObserver } from '../utils/reveal.js'
+import {
+  getAdminMatchingConfig,
+  saveAdminMatchingDraft,
+  publishAdminMatchingConfig,
+} from '../services/matching-config-service.js'
 
 function createPanelHeading(title, description, badge = '') {
   return createElement('div', {
@@ -105,18 +110,190 @@ function createQuestionCard(question, index) {
   })
 }
 
-function createQuestionsPanel(mode) {
+function createEditableQuestionCard(question, index) {
+  return createCard({
+    tagName: 'article',
+    className: 'admin-matching-question',
+    children: [
+      createElement('div', {
+        className: 'admin-matching-question__topline',
+        children: [
+          createElement('span', {
+            className: 'admin-matching-question__number',
+            text: `Q${index + 1}`,
+          }),
+
+          createElement('label', {
+            children: [
+              createElement('input', {
+                attributes: {
+                  type: 'checkbox',
+                  checked: question.enabled,
+                  'data-config-question-enabled': question.id,
+                },
+              }),
+              document.createTextNode(' Enabled'),
+            ],
+          }),
+        ],
+      }),
+
+      createElement('div', {
+        className: 'admin-matching-question__group',
+        children: [
+          createElement('label', {
+            children: [
+              createElement('strong', {
+                text: 'Question title',
+              }),
+
+              createElement('input', {
+                className: 'input',
+                attributes: {
+                  type: 'text',
+                  value: question.title ?? '',
+                  'data-config-question-title': question.id,
+                },
+              }),
+            ],
+          }),
+        ],
+      }),
+
+      createElement('div', {
+        className: 'admin-matching-question__group',
+        children: [
+          createElement('label', {
+            children: [
+              createElement('strong', {
+                text: 'Hint',
+              }),
+
+              createElement('input', {
+                className: 'input',
+                attributes: {
+                  type: 'text',
+                  value: question.hint ?? '',
+                  'data-config-question-hint': question.id,
+                },
+              }),
+            ],
+          }),
+        ],
+      }),
+
+      createElement('div', {
+        className: 'admin-matching-question__group',
+        children: [
+          createElement('p', {
+            text: 'Answer options',
+          }),
+
+          createElement('div', {
+            className: 'admin-matching-questions',
+            children: question.options.map((option) =>
+              createElement('div', {
+                className: 'admin-matching-option-list',
+                children: [
+                  createElement('input', {
+                    className: 'input',
+                    attributes: {
+                      type: 'text',
+                      value: option.label ?? '',
+                      'data-config-option-label': option.id,
+                      'data-config-question-id': question.id,
+                      'aria-label': `Label for ${option.label}`,
+                    },
+                  }),
+
+                  createElement('input', {
+                    className: 'input',
+                    attributes: {
+                      type: 'text',
+                      value: option.value ?? '',
+                      'data-config-option-value': option.id,
+                      'data-config-question-id': question.id,
+                      'aria-label': `Value for ${option.label}`,
+                    },
+                  }),
+
+                  createElement('label', {
+                    children: [
+                      createElement('input', {
+                        attributes: {
+                          type: 'checkbox',
+                          checked: option.enabled,
+                          'data-config-option-enabled': option.id,
+                          'data-config-question-id': question.id,
+                        },
+                      }),
+
+                      document.createTextNode(' Enabled'),
+                    ],
+                  }),
+                ],
+              }),
+            ),
+          }),
+        ],
+      }),
+    ],
+  })
+}
+
+function createQuestionsPanel(mode, config) {
+  const questions =
+    Array.isArray(config?.questions)
+      ? config.questions
+      : []
+
   return createElement('section', {
     className: 'admin-matching-panel__content animate-fade',
+
     children: [
       createPanelHeading(
         'Questions & options',
-        `A compact view of ${mode.shortLabel.toLowerCase()} inputs and the configuration areas they affect.`,
-        'Presentation data',
+        `Manage the questions and answer options used by ${mode.shortLabel.toLowerCase()} matching.`,
+        `${questions.length} questions`,
       ),
-      createElement('div', {
-        className: 'admin-matching-questions',
-        children: mode.questions.map(createQuestionCard),
+
+      ...(questions.length > 0
+        ? [
+            createElement('div', {
+              className: 'admin-matching-questions',
+              children: questions
+                .slice()
+                .sort(
+                  (a, b) =>
+                    (a.order ?? 0) -
+                    (b.order ?? 0),
+                )
+                .map(createEditableQuestionCard),
+            }),
+          ]
+        : [
+            createElement('p', {
+              className: 'admin-matching-panel__note',
+              text: 'No configurable questions are available yet.',
+            }),
+          ]),
+
+      createElement('button', {
+        className: 'button button--primary button--medium',
+        attributes: {
+          type: 'button',
+          'data-save-matching-draft': true,
+        },
+        text: 'Save draft',
+      }),
+
+      createElement('p', {
+        className: 'admin-matching-panel__note',
+        attributes: {
+          'data-matching-draft-status': true,
+          'aria-live': 'polite',
+        },
+        text: 'Changes are not saved yet.',
       }),
     ],
   })
@@ -179,36 +356,264 @@ function createRulesTable(mode) {
   })
 }
 
-function createRulesPanel(mode) {
+function createRulesPanel(mode, config) {
+  if (!config) {
+    return createElement('section', {
+      className:
+        'admin-matching-panel__content animate-fade',
+
+      children: [
+        createPanelHeading(
+          'Rules & weights',
+          'Loading matching configuration...',
+          'Loading',
+        ),
+      ],
+    })
+  }
+
+  const weights =
+    config.weights ?? {}
+
+  const supplyAdjustments =
+    config.supplyAdjustments ?? {}
+
+  const rules =
+    Array.isArray(config.rules)
+      ? config.rules
+      : []
+
+  const createNumberField = (
+    label,
+    value,
+    dataAttribute,
+    key,
+  ) =>
+    createElement('label', {
+      className:
+        'admin-matching-question__group',
+
+      children: [
+        createElement('strong', {
+          text: label,
+        }),
+
+        createElement('input', {
+          className: 'input',
+
+          attributes: {
+            type: 'number',
+            step: '1',
+            value: value ?? 0,
+            [dataAttribute]: key,
+          },
+        }),
+      ],
+    })
+
   return createElement('section', {
-    className: 'admin-matching-panel__content animate-fade',
+    className:
+      'admin-matching-panel__content animate-fade',
+
     children: [
       createPanelHeading(
         'Rules & weights',
-        'Conditions remain separate from rendering so a future engine can evaluate them independently.',
-        'Rule-based + weighted',
+        `Configure how ${mode.shortLabel.toLowerCase()} matching scores and filters opportunities.`,
+        'Live configuration',
       ),
-      createElement('ul', {
-        className: 'admin-matching-effect-coverage',
-        attributes: { 'aria-label': 'Supported matching effect types' },
-        children: mode.effectCoverage.map((effect) =>
-          createElement('li', {
+
+      createElement('div', {
+        className: 'admin-matching-questions',
+
+        children: [
+          createCard({
+            tagName: 'article',
+            className:
+              'admin-matching-question',
+
             children: [
-              createElement('span', { text: effect.label }),
-              createElement('small', { text: effect.state }),
+              createElement('h3', {
+                text: 'Scoring weights',
+              }),
+
+              createElement('p', {
+                className:
+                  'admin-matching-panel__note',
+
+                text:
+                  'Higher values give that criterion more influence in the final matching score.',
+              }),
+
+              createNumberField(
+                'Traveller segment',
+                weights.segment,
+                'data-config-weight',
+                'segment',
+              ),
+
+              createNumberField(
+                'Investment type',
+                weights.type,
+                'data-config-weight',
+                'type',
+              ),
+
+              createNumberField(
+                'Region',
+                weights.region,
+                'data-config-weight',
+                'region',
+              ),
+
+              createNumberField(
+                'Environment',
+                weights.environment,
+                'data-config-weight',
+                'environment',
+              ),
             ],
           }),
-        ),
+
+          createCard({
+            tagName: 'article',
+            className:
+              'admin-matching-question',
+
+            children: [
+              createElement('h3', {
+                text: 'Supply adjustments',
+              }),
+
+              createElement('p', {
+                className:
+                  'admin-matching-panel__note',
+
+                text:
+                  'These values adjust the score according to the opportunity supply signal.',
+              }),
+
+              createNumberField(
+                'Strong supply signal',
+                supplyAdjustments.strong,
+                'data-config-supply-adjustment',
+                'strong',
+              ),
+
+              createNumberField(
+                'Good supply signal',
+                supplyAdjustments.good,
+                'data-config-supply-adjustment',
+                'good',
+              ),
+
+              createNumberField(
+                'Competitive supply signal',
+                supplyAdjustments.competitive,
+                'data-config-supply-adjustment',
+                'competitive',
+              ),
+            ],
+          }),
+
+          createCard({
+            tagName: 'article',
+            className:
+              'admin-matching-question',
+
+            children: [
+              createElement('h3', {
+                text: 'Matching rules',
+              }),
+
+              createElement('p', {
+                className:
+                  'admin-matching-panel__note',
+
+                text:
+                  'Enable or disable rules used by the published matching engine.',
+              }),
+
+              ...rules
+                .slice()
+                .sort(
+                  (a, b) =>
+                    (a.order ?? 0)
+                    - (b.order ?? 0),
+                )
+                .map((rule) =>
+                  createElement('label', {
+                    className:
+                      'admin-matching-question__group',
+
+                    children: [
+                      createElement('div', {
+                        className:
+                          'admin-matching-question__topline',
+
+                        children: [
+                          createElement('strong', {
+                            text:
+                              rule.label
+                              ?? rule.id,
+                          }),
+
+                          createElement('input', {
+                            attributes: {
+                              type: 'checkbox',
+
+                              checked:
+                                rule.enabled
+                                !== false,
+
+                              'data-config-rule-enabled':
+                                rule.id,
+                            },
+                          }),
+                        ],
+                      }),
+
+                      createElement('small', {
+                        text:
+                          `${rule.type ?? 'rule'} · ${rule.criterion ?? 'general'}`,
+                      }),
+                    ],
+                  }),
+                ),
+            ],
+          }),
+        ],
       }),
-      createRulesTable(mode),
+
+      createElement('button', {
+        className:
+          'button button--primary button--medium',
+
+        attributes: {
+          type: 'button',
+          'data-save-matching-draft': true,
+        },
+
+        text: 'Save draft',
+      }),
+
       createElement('p', {
-        className: 'admin-matching-panel__note',
-        text: 'Illustrative configuration only · no production score is calculated on this screen.',
+        className:
+          'admin-matching-panel__note',
+
+        attributes: {
+          'data-matching-draft-status':
+            true,
+
+          'aria-live':
+            'polite',
+        },
+
+        text:
+          'Changes are not saved yet.',
       }),
     ],
   })
 }
-
 function createHardFiltersPanel(mode) {
   return createElement('section', {
     className: 'admin-matching-panel__content animate-fade',
@@ -337,19 +742,19 @@ function createPublishPanel(mode) {
             ],
           }),
           createElement('button', {
-            className: 'button button--primary button--medium',
-            attributes: {
-              type: 'button',
-              disabled: true,
-              'aria-describedby': 'admin-matching-publish-note',
-            },
-            text: 'Publish changes',
+  className: 'button button--primary button--medium',
+  attributes: {
+    type: 'button',
+    'data-publish-matching-config': true,
+    'aria-describedby': 'admin-matching-publish-note',
+  },
+  text: 'Publish changes',
+
           }),
           createElement('p', {
             className: 'admin-matching-panel__note',
             attributes: { id: 'admin-matching-publish-note' },
-            text: 'Publishing is unavailable while this screen uses presentation-only data.',
-          }),
+text: 'Publishing saves the current matching configuration to Firestore.',          }),
         ],
       }),
     ],
@@ -391,7 +796,14 @@ function createModeButton(mode, active) {
 }
 
 function createMatchingView() {
-  const state = { mode: 'tourist', section: 'categories' }
+  const state = {
+  mode: 'tourist',
+  section: 'categories',
+  configs: {
+    tourist: null,
+    investor: null,
+  },
+}
   const modeButtons = new Map()
   const sectionButtons = new Map()
   const modeOrder = Object.keys(presentation.modes)
@@ -497,7 +909,12 @@ function createMatchingView() {
     }
 
     panel.setAttribute('aria-labelledby', `admin-matching-tab-${state.section}`)
-    panel.replaceChildren(panelFactories[state.section](mode))
+    panel.replaceChildren(
+  panelFactories[state.section](
+    mode,
+    state.configs[state.mode],
+  ),
+)
   }
 
   function selectFromKeyboard(event, order, current, selector, update) {
@@ -529,7 +946,149 @@ function createMatchingView() {
     return true
   }
 
-  function handleClick(event) {
+  async function loadConfigs() {
+  const [touristConfig, investorConfig] =
+    await Promise.all([
+      getAdminMatchingConfig('tourist'),
+      getAdminMatchingConfig('investor'),
+      render()
+    ])
+
+  state.configs.tourist = touristConfig
+  state.configs.investor = investorConfig
+}
+
+function handleInput(event) {
+  const config = state.configs[state.mode]
+
+  if (!config) {
+    return
+  }
+
+  const weightKey =
+  event.target.dataset.configWeight
+
+if (weightKey) {
+  const value =
+    Number(event.target.value)
+
+  if (
+    Number.isFinite(value)
+  ) {
+    config.weights ??= {}
+    config.weights[weightKey] =
+      value
+  }
+
+  return
+}
+
+
+const supplyKey =
+  event.target.dataset
+    .configSupplyAdjustment
+
+if (supplyKey) {
+  const value =
+    Number(event.target.value)
+
+  if (
+    Number.isFinite(value)
+  ) {
+    config.supplyAdjustments ??= {}
+
+    config.supplyAdjustments[
+      supplyKey
+    ] = value
+  }
+
+  return
+}
+
+
+const ruleId =
+  event.target.dataset
+    .configRuleEnabled
+
+if (ruleId) {
+  const rule =
+    config.rules?.find(
+      (item) =>
+        item.id === ruleId,
+    )
+
+  if (rule) {
+    rule.enabled =
+      event.target.checked
+  }
+
+  return
+}
+
+  const questionId =
+    event.target.dataset.configQuestionId
+    ?? event.target.dataset.configQuestionTitle
+    ?? event.target.dataset.configQuestionHint
+    ?? event.target.dataset.configQuestionEnabled
+
+  if (!questionId) {
+    return
+  }
+
+  const question = config.questions.find(
+    (item) => item.id === questionId,
+  )
+
+  if (!question) {
+    return
+  }
+
+  if (event.target.dataset.configQuestionTitle) {
+    question.title = event.target.value
+    return
+  }
+
+  if (event.target.dataset.configQuestionHint) {
+    question.hint = event.target.value
+    return
+  }
+
+  if (event.target.dataset.configQuestionEnabled) {
+    question.enabled = event.target.checked
+    return
+  }
+
+  const optionId =
+    event.target.dataset.configOptionLabel
+    ?? event.target.dataset.configOptionValue
+    ?? event.target.dataset.configOptionEnabled
+
+  if (!optionId) {
+    return
+  }
+
+  const option = question.options.find(
+    (item) => item.id === optionId,
+  )
+
+  if (!option) {
+    return
+  }
+
+  if (event.target.dataset.configOptionLabel) {
+    option.label = event.target.value
+  }
+
+  if (event.target.dataset.configOptionValue) {
+    option.value = event.target.value
+  }
+
+  if (event.target.dataset.configOptionEnabled) {
+    option.enabled = event.target.checked
+  }
+}
+
+  async function handleClick(event) {
     const modeButton = event.target.closest('[data-matching-mode]')
     if (modeButton) {
       state.mode = modeButton.dataset.matchingMode
@@ -543,6 +1102,103 @@ function createMatchingView() {
       render()
       return
     }
+
+    const saveDraftButton =
+  event.target.closest(
+    '[data-save-matching-draft]',
+  )
+
+if (saveDraftButton) {
+  const config = state.configs[state.mode]
+
+  if (!config) {
+    return
+  }
+
+  saveDraftButton.disabled = true
+  saveDraftButton.textContent = 'Saving...'
+
+  const status = panel.querySelector(
+    '[data-matching-draft-status]',
+  )
+
+  try {
+    await saveAdminMatchingDraft(
+      state.mode,
+      config,
+    )
+
+    saveDraftButton.textContent = 'Saved'
+
+    if (status) {
+      status.textContent =
+        'Draft saved successfully.'
+    }
+  } catch (error) {
+    console.error(
+      '[RIHLATI] Failed to save matching draft.',
+      error,
+    )
+
+    saveDraftButton.disabled = false
+    saveDraftButton.textContent = 'Save draft'
+
+    if (status) {
+      status.textContent =
+        'Failed to save draft.'
+    }
+  }
+
+  return
+}
+
+    const publishButton =
+  event.target.closest(
+    '[data-publish-matching-config]',
+  )
+
+if (publishButton) {
+  const config = state.configs[state.mode]
+
+  if (!config) {
+    console.error(
+      '[RIHLATI] Matching configuration is not loaded.',
+    )
+    return
+  }
+
+  publishButton.disabled = true
+  publishButton.textContent = 'Publishing...'
+
+  try {
+    await publishAdminMatchingConfig(
+      state.mode,
+      config,
+    )
+
+    publishButton.textContent = 'Published'
+
+    const note = panel.querySelector(
+      '#admin-matching-publish-note',
+    )
+
+    if (note) {
+      note.textContent =
+        `${presentation.modes[state.mode].label} configuration published successfully.`
+    }
+  } catch (error) {
+    console.error(
+      '[RIHLATI] Matching publish failed.',
+      error,
+    )
+
+    publishButton.disabled = false
+    publishButton.textContent =
+      'Publish changes'
+  }
+
+  return
+}
 
     const previewButton = event.target.closest('[data-run-matching-preview]')
     if (previewButton) {
@@ -575,7 +1231,13 @@ function createMatchingView() {
   }
 
   render()
-  return { element: main, handleClick, handleKeydown }
+ return {
+  element: main,
+  handleClick,
+  handleKeydown,
+  handleInput,
+  loadConfigs,
+}
 }
 
 export function createAdminMatchingPage() {
@@ -601,12 +1263,35 @@ export function createAdminMatchingPage() {
       }
 
       mounted = true
+
+      void matchingView.loadConfigs().catch((error) => {
+  console.error(
+    '[RIHLATI] Failed to load matching configuration.',
+    error,
+  )
+})
+
       matchingView.element.addEventListener('click', matchingView.handleClick, {
         signal: pageController.signal,
       })
       matchingView.element.addEventListener('keydown', matchingView.handleKeydown, {
         signal: pageController.signal,
       })
+      matchingView.element.addEventListener(
+  'input',
+  matchingView.handleInput,
+  {
+    signal: pageController.signal,
+  },
+)
+
+matchingView.element.addEventListener(
+  'change',
+  matchingView.handleInput,
+  {
+    signal: pageController.signal,
+  },
+)
       revealCleanup = mountRevealObserver(page)
     },
 

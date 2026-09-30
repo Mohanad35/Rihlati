@@ -45,6 +45,37 @@ function normalizeJourneyAssets(journey) {
   }
 }
 
+function createPersistableJourney(journey) {
+  if (
+    !journey
+    || typeof journey !== 'object'
+    || !Array.isArray(journey.stops)
+  ) {
+    return journey
+  }
+
+  return {
+    schemaVersion: journey.schemaVersion,
+    journeyKey: journey.journeyKey,
+    title: journey.title,
+    summary: journey.summary,
+    preferences: journey.preferences,
+
+    stops: journey.stops.map((stop) => ({
+      day: stop.day,
+      name: stop.name,
+      nameAr: stop.nameAr,
+      region: stop.region,
+      type: stop.type,
+      time: stop.time,
+      why: stop.why,
+      tip: stop.tip,
+      image: stop.image,
+      imageAlt: stop.imageAlt,
+    })),
+  }
+}
+
 function getCreatedAtMilliseconds(journey) {
   if (typeof journey?.createdAt?.toMillis === 'function') {
     return journey.createdAt.toMillis()
@@ -81,7 +112,16 @@ export function savePendingTouristJourney(user) {
   }
 
   const operation = (async () => {
-    const journeyId = await createJourney(user.uid, normalizeJourneyAssets(pendingJourney))
+    const normalizedJourney =
+  normalizeJourneyAssets(pendingJourney)
+
+const persistableJourney =
+  createPersistableJourney(normalizedJourney)
+
+const journeyId = await createJourney(
+  user.uid,
+  persistableJourney,
+)
     clearPendingJourney()
     return { journeyId }
   })()
@@ -110,4 +150,17 @@ export async function getCurrentUserJourneys(user) {
   return journeys
     .map(normalizeJourneyAssets)
     .sort((first, second) => getCreatedAtMilliseconds(second) - getCreatedAtMilliseconds(first))
+}
+
+export async function getCurrentUserJourneyById(user, journeyId) {
+  if (typeof journeyId !== 'string' || journeyId.length === 0) {
+    throw createJourneySaveError(
+      'journey/invalid-id',
+      'A valid Journey id is required.',
+    )
+  }
+
+  const journeys = await getCurrentUserJourneys(user)
+
+  return journeys.find((journey) => journey.id === journeyId) ?? null
 }

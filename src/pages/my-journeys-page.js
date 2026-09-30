@@ -319,7 +319,7 @@ function createPassportCard(journey) {
                 className: 'journey-passport__actions',
                 children: [
                   createButtonLink({
-                    href: JOURNEY_PATH,
+                     href: `${JOURNEY_PATH}?id=${encodeURIComponent(journey.id)}`,
                     label: 'Open Journey',
                     size: 'small',
                     arrow: true,
@@ -584,7 +584,7 @@ function createQuickPeekDialog(journey) {
                 className: 'journey-passport-dialog__actions',
                 children: [
                   createButtonLink({
-                    href: JOURNEY_PATH,
+                    href: `${JOURNEY_PATH}?id=${encodeURIComponent(journey.id)}`,
                     label: 'Open Journey',
                     arrow: true,
                   }),

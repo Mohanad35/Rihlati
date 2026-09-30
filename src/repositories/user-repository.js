@@ -1,6 +1,8 @@
 import {
+  collection,
   doc,
   getDoc,
+  getDocs,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -44,6 +46,22 @@ export async function getUserProfile(uid) {
   const snapshot = await getDoc(getUserDocument(uid))
 
   return snapshot.exists() ? snapshot.data() : null
+}
+
+export async function getAllUsers() {
+  const snapshot = await getDocs(
+    collection(
+      firestoreDb,
+      USERS_COLLECTION,
+    ),
+  )
+
+  return snapshot.docs.map(
+    (documentSnapshot) => ({
+      id: documentSnapshot.id,
+      ...documentSnapshot.data(),
+    }),
+  )
 }
 
 export function updateUserProfile(uid, updates) {

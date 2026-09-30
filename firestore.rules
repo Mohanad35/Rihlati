@@ -421,6 +421,96 @@ function isPartnershipRequestOwner(data) {
       return isAuthenticated() && data.ownerId == request.auth.uid;
     }
 
+    function hasCanonicalGovernorate(governorateId) {
+  return governorateId in [
+    'irbid',
+    'ajloun',
+    'jerash',
+    'mafraq',
+    'balqa',
+    'amman',
+    'zarqa',
+    'madaba',
+    'karak',
+    'tafilah',
+    'maan',
+    'aqaba'
+  ];
+}
+
+function hasCanonicalDestinationStatus(status) {
+  return status in [
+    'Published',
+    'Draft'
+  ];
+}
+
+function hasSafeDestinationEnvelope(data) {
+  return data.keys().hasAll([
+      'name',
+      'governorateId',
+      'category',
+      'description',
+      'imageUrl',
+      'touristTags',
+      'investorTags',
+      'status',
+      'createdAt',
+      'updatedAt'
+    ])
+    && data.keys().hasOnly([
+      'name',
+      'governorateId',
+      'category',
+      'description',
+      'imageUrl',
+      'touristTags',
+      'investorTags',
+      'status',
+      'createdAt',
+      'updatedAt'
+    ])
+
+    && data.name is string
+    && data.name.size() > 0
+    && data.name.size() <= 160
+
+    && data.governorateId is string
+    && hasCanonicalGovernorate(
+      data.governorateId
+    )
+
+    && data.category is string
+    && data.category.size() > 0
+    && data.category.size() <= 120
+
+    && data.description is string
+    && data.description.size() > 0
+    && data.description.size() <= 2000
+
+    && data.imageUrl is string
+    && data.imageUrl.size() <= 1000
+    && (
+      data.imageUrl == ''
+      || data.imageUrl.matches('https://.+')
+      || data.imageUrl.matches('http://.+')
+    )
+
+    && data.touristTags is list
+    && data.touristTags.size() <= 20
+
+    && data.investorTags is list
+    && data.investorTags.size() <= 20
+
+    && data.status is string
+    && hasCanonicalDestinationStatus(
+      data.status
+    )
+
+    && data.createdAt is timestamp
+    && data.updatedAt is timestamp;
+}
+
     match /users/{uid} {
       allow create: if isOwner(uid)
         && hasSafeUserProfile(request.resource.data)
@@ -522,6 +612,62 @@ match /content/{contentId} {
 
   allow delete: if isAdmin();
 }
+    match /matchingConfigs/{mode} {
+      allow get, list: if isAdmin();
+
+      allow create, update: if isAdmin()
+        && mode in [
+          'tourist',
+          'investor'
+        ];
+
+      allow delete: if false;
+    }
+
+    match /publishedMatchingConfigs/{mode} {
+  allow get: if mode in [
+    'tourist',
+    'investor'
+  ];
+
+  allow list: if false;
+
+  allow create, update: if isAdmin()
+    && mode in [
+      'tourist',
+      'investor'
+    ];
+
+  allow delete: if false;
+}
+match /destinations/{destinationId} {
+  allow get: if resource.data.status == 'Published'
+    || isAdmin();
+
+  allow list: if isAdmin()
+    || resource.data.status == 'Published';
+
+  allow create: if isAdmin()
+    && hasSafeDestinationEnvelope(
+      request.resource.data
+    )
+    && request.resource.data.createdAt
+      == request.time
+    && request.resource.data.updatedAt
+      == request.time;
+
+  allow update: if isAdmin()
+    && hasSafeDestinationEnvelope(
+      request.resource.data
+    )
+    && request.resource.data.createdAt
+      == resource.data.createdAt
+    && request.resource.data.updatedAt
+      == request.time;
+
+  allow delete: if isAdmin();
+}
+
     match /{document=**} {
       allow read, write: if false;
     }

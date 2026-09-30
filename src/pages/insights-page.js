@@ -198,9 +198,10 @@ function createGuideCard({
 function createTravelGuidesSection(items = []) {
   const guides = items
     .filter(
-      (item) =>
-        item.contentType === 'Travel Guide',
-    )
+  (item) =>
+    item.contentType === 'Travel Guide'
+    || item.contentType === 'Story & Experience',
+)
     .map((item) => ({
       image:
         item.imageUrl

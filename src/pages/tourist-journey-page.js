@@ -1,42 +1,17 @@
 import { createJourneyMapPresentation } from '../components/journey-map-presentation.js'
 import { createSiteHeader, mountSiteHeader } from '../components/site-shell.js'
 import { createCard, createEyebrow, createIcon } from '../components/ui.js'
-import { touristJourneyStops } from '../data/tourist-journey-presentation-data.js'
 import {
-  getTouristAnswers,
-  savePendingJourney,
+  getPendingJourney,
 } from '../services/guest-session-service.js'
 import { createElement } from '../utils/dom.js'
+import { observeAuthState } from '../services/auth-service.js'
+import { getCurrentUserJourneyById } from '../services/journey-service.js'
 
 const QUESTIONNAIRE_PATH = '/t-questionnaire'
 const SAVE_PATH = '/t-save'
 
-function createPendingJourneySnapshot() {
-  return {
-    schemaVersion: 1,
-    journeyKey: 'heritage-desert-escape',
-    title: 'Heritage & Desert Escape',
-    summary: {
-      durationDays: 4,
-      stopCount: touristJourneyStops.length,
-      pace: 'Balanced pace',
-      focus: 'Culture-led',
-    },
-    preferences: getTouristAnswers() ?? {},
-    stops: touristJourneyStops.map((stop) => ({
-      day: stop.day,
-      name: stop.name,
-      nameAr: stop.nameAr,
-      region: stop.region,
-      type: stop.type,
-      time: stop.time,
-      why: stop.why,
-      tip: stop.tip,
-      image: stop.image,
-      imageAlt: stop.imageAlt,
-    })),
-  }
-}
+
 
 function createSummaryBadge({ label, tone, icon }) {
   return createElement('span', {
@@ -364,10 +339,37 @@ function createQuickPeekDialog(stop, index) {
   return { dialog, closeButton }
 }
 
-export function createTouristJourneyPage({ path = '/t-journey', router } = {}) {
+export function createTouristJourneyPage({
+  path = '/t-journey',
+  url,
+  router,
+} = {}) {
   if (!router || typeof router.navigate !== 'function') {
     throw new TypeError('Tourist Journey requires the application router.')
   }
+  const journeyId =
+  url instanceof URL
+    ? url.searchParams.get('id')
+    : null
+
+  const pendingJourney = getPendingJourney()
+
+let journeyStops =
+  Array.isArray(pendingJourney?.stops)
+  && pendingJourney.stops.length > 0
+    ? pendingJourney.stops
+    : []
+
+let journeySummary = pendingJourney?.summary ?? {
+  durationDays: 4,
+  stopCount: journeyStops.length,
+  pace: 'Balanced pace',
+  focus: 'Culture-led',
+}
+
+let journeyTitle =
+  pendingJourney?.title
+  ?? 'Heritage & Desert Escape'
 
   let activeStopIndex = 0
   let quickPeekDialog = null
@@ -375,21 +377,28 @@ export function createTouristJourneyPage({ path = '/t-journey', router } = {}) {
   let quickPeekOpener = null
   let previousBodyOverflow = ''
   let routeSignal = null
+  let authCleanup = () => {}
   let mounted = false
   let destroyed = false
 
   const header = createSiteHeader({ currentPath: path })
-  const stopCards = touristJourneyStops.map((stop, index) =>
+  let stopCards = journeyStops.map((stop, index) =>
     createStopCard(stop, index, activeStopIndex),
   )
-  const journeyMap = createJourneyMapPresentation({
-    stops: touristJourneyStops,
+  let journeyMap = createJourneyMapPresentation({
+    stops: journeyStops,
     activeIndex: activeStopIndex,
   })
   const contextHost = createElement('div', {
-    className: 'tourist-journey__context',
-    children: [createDestinationContext(touristJourneyStops[activeStopIndex])],
-  })
+  className: 'tourist-journey__context',
+  children: journeyStops.length > 0
+    ? [createDestinationContext(journeyStops[activeStopIndex])]
+    : [
+        createElement('p', {
+          text: 'Loading journey...',
+        }),
+      ],
+})
   const selectionStatus = createElement('p', {
     className: 'visually-hidden',
     attributes: {
@@ -416,20 +425,28 @@ export function createTouristJourneyPage({ path = '/t-journey', router } = {}) {
                   createElement('h1', {
                     className: 'tourist-journey__title',
                     attributes: { id: 'tourist-journey-title' },
-                    text: 'Heritage & Desert Escape',
+                    text: journeyTitle,
                   }),
                   createElement('div', {
                     className: 'tourist-journey-summary',
                     attributes: { 'aria-label': 'Journey summary' },
                     children: [
-                      createSummaryBadge({ label: '4 days', tone: 'brand', icon: 'clock' }),
-                      createSummaryBadge({
-                        label: `${touristJourneyStops.length} stops`,
-                        tone: 'terracotta',
-                        icon: 'pin',
-                      }),
-                      createSummaryBadge({ label: 'Balanced pace', tone: 'sand' }),
-                      createSummaryBadge({ label: 'Culture-led', tone: 'gold' }),
+createSummaryBadge({
+  label: `${journeySummary.durationDays} days`,
+  tone: 'brand',
+  icon: 'clock',
+}),                     createSummaryBadge({
+  label: `${journeyStops.length} stops`,
+  tone: 'terracotta',
+  icon: 'pin',
+}),
+createSummaryBadge({
+  label: journeySummary.pace,
+  tone: 'sand',
+}),                      createSummaryBadge({
+  label: journeySummary.focus,
+  tone: 'gold',
+}),
                     ],
                   }),
                 ],
@@ -492,7 +509,7 @@ export function createTouristJourneyPage({ path = '/t-journey', router } = {}) {
 
   const getStopIndex = (control) => {
     const index = Number(control.dataset.stopIndex)
-    return Number.isInteger(index) && index >= 0 && index < touristJourneyStops.length
+    return Number.isInteger(index) && index >= 0 && index < journeyStops.length
       ? index
       : null
   }
@@ -512,8 +529,8 @@ export function createTouristJourneyPage({ path = '/t-journey', router } = {}) {
       )
     })
     journeyMap.setActive(activeStopIndex)
-    contextHost.replaceChildren(createDestinationContext(touristJourneyStops[activeStopIndex]))
-    selectionStatus.textContent = `Selected stop ${activeStopIndex + 1}: ${touristJourneyStops[activeStopIndex].name}.`
+    contextHost.replaceChildren(createDestinationContext(journeyStops[activeStopIndex]))
+    selectionStatus.textContent = `Selected stop ${activeStopIndex + 1}: ${journeyStops[activeStopIndex].name}.`
   }
 
   const closeQuickPeek = ({ restoreFocus = true } = {}) => {
@@ -545,7 +562,7 @@ export function createTouristJourneyPage({ path = '/t-journey', router } = {}) {
   const openQuickPeek = (index, opener) => {
     closeQuickPeek({ restoreFocus: false })
 
-    const stop = touristJourneyStops[index]
+    const stop = journeyStops[index]
     const { dialog, closeButton } = createQuickPeekDialog(stop, index)
     const controller = new AbortController()
     quickPeekDialog = dialog
@@ -671,9 +688,92 @@ export function createTouristJourneyPage({ path = '/t-journey', router } = {}) {
       }
 
       mounted = true
-      savePendingJourney(createPendingJourneySnapshot())
+      
       headerCleanup = mountSiteHeader(header, { signal: pageController.signal })
       page.addEventListener('click', handleClick, { signal: pageController.signal })
+      
+      authCleanup = observeAuthState((user) => {
+  if (!journeyId || !user) {
+    return
+  }
+
+  void getCurrentUserJourneyById(user, journeyId)
+    .then((journey) => {
+  if (destroyed || !journey) {
+    return
+  }
+
+  journeyStops =
+    Array.isArray(journey.stops)
+      ? journey.stops
+      : []
+
+  journeySummary = journey.summary ?? {
+    durationDays: 0,
+    stopCount: journeyStops.length,
+    pace: '',
+    focus: '',
+  }
+
+  journeyTitle =
+    journey.title
+    ?? 'Your Jordan Journey'
+
+    const titleElement = page.querySelector('#tourist-journey-title')
+
+if (titleElement) {
+  titleElement.textContent = journeyTitle
+}
+
+const summaryBadges = page.querySelectorAll(
+  '.tourist-journey-summary__badge',
+)
+
+const summaryLabels = [
+  `${journeySummary.durationDays} days`,
+  `${journeyStops.length} stops`,
+  journeySummary.pace,
+  journeySummary.focus,
+]
+
+summaryBadges.forEach((badge, index) => {
+  const textNode = badge.lastChild
+
+  if (textNode?.nodeType === Node.TEXT_NODE) {
+    textNode.textContent = summaryLabels[index] ?? ''
+  }
+})
+
+stopCards = journeyStops.map((stop, index) =>
+  createStopCard(stop, index, activeStopIndex),
+)
+
+const itineraryList = page.querySelector('.tourist-journey__itinerary')
+
+if (itineraryList) {
+  itineraryList.replaceChildren(...stopCards)
+}
+
+const nextJourneyMap = createJourneyMapPresentation({
+  stops: journeyStops,
+  activeIndex: activeStopIndex,
+})
+
+journeyMap.element.replaceWith(nextJourneyMap.element)
+journeyMap = nextJourneyMap
+
+if (journeyStops.length > 0) {
+  contextHost.replaceChildren(
+    createDestinationContext(journeyStops[activeStopIndex]),
+  )
+}
+
+  
+})
+    .catch((error) => {
+      console.error('[RIHLATI] Failed to load saved Journey.', error)
+    })
+})
       routeSignal = signal instanceof AbortSignal ? signal : null
       routeSignal?.addEventListener('abort', handleRouteAbort, { once: true })
     },
@@ -687,6 +787,7 @@ export function createTouristJourneyPage({ path = '/t-journey', router } = {}) {
       routeSignal?.removeEventListener('abort', handleRouteAbort)
       routeSignal = null
       closeQuickPeek({ restoreFocus: false })
+      authCleanup()
       pageController.abort()
       headerCleanup()
     },

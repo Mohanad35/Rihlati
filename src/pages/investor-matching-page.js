@@ -1,9 +1,40 @@
 import { homeAssets } from '../assets/home-assets.js'
 import { createElement } from '../utils/dom.js'
+import {
+  getInvestorAnswers,
+  savePendingInvestment,
+} from '../services/guest-session-service.js'
+
+import {
+  rankInvestorOpportunities,
+} from '../services/investor-matching-service.js'
+
+import {
+  getPublishedMatchingConfig,
+} from '../services/matching-config-service.js'
 
 const MESSAGE_INTERVAL_MS = 950
 const COMPLETION_DELAY_MS = 4200
 const RESULT_PATH = '/ni-result'
+
+function createResultMatch(result, index) {
+  const opportunity = result.opportunity
+
+  return {
+    id: opportunity.id,
+    rank: index === 0
+      ? 'Best Match'
+      : 'Alternative',
+    region: opportunity.region,
+    mapLabel: opportunity.mapLabel,
+    type: opportunity.type,
+    fit: result.matchPercentage,
+    scale: opportunity.scale,
+    segment: opportunity.segment,
+    insight: opportunity.insight,
+    prototypeMapPosition: opportunity.prototypeMapPosition,
+  }
+}
 
 const MATCHING_MESSAGES = Object.freeze([
   'Reading your criteria',
@@ -193,16 +224,87 @@ export function createInvestorMatchingPage({ router } = {}) {
         renderProgress()
       }, MESSAGE_INTERVAL_MS)
 
-      completionTimer = window.setTimeout(() => {
-        if (!active || destroyed) {
-          return
-        }
+completionTimer = window.setTimeout(async () => {
+  if (!active || destroyed) {
+    return
+  }
 
-        stop()
-        void router.navigate(RESULT_PATH).catch((error) => {
-          console.error('[RIHLATI] Investor matching navigation failed.', error)
-        })
-      }, COMPLETION_DELAY_MS)
+  const answers =
+    getInvestorAnswers() ?? {}
+
+  let publishedConfig = null
+
+  try {
+    publishedConfig =
+      await getPublishedMatchingConfig(
+        'investor',
+      )
+  } catch (error) {
+    console.error(
+      '[RIHLATI] Failed to load published investor matching config. Falling back to defaults.',
+      error,
+    )
+  }
+
+  if (!active || destroyed) {
+    return
+  }
+
+  const rankedResults =
+    rankInvestorOpportunities(
+      answers,
+      publishedConfig ?? undefined,
+    )
+
+  const matches =
+    rankedResults.map(
+      (result, index) =>
+        createResultMatch(
+          result,
+          index,
+        ),
+    )
+
+  if (matches.length === 0) {
+    console.error(
+      '[RIHLATI] Investor matching produced no compatible opportunities.',
+    )
+    return
+  }
+
+ savePendingInvestment({
+  schemaVersion: 1,
+
+  opportunityKey:
+    matches[0].id,
+
+  criteria:
+    answers,
+
+  matches,
+
+  context: {
+    label: 'Opportunity fit',
+
+    text:
+      matches[0].insight
+      ?? 'Generated from your investment criteria.',
+  },
+})
+
+  stop()
+
+  void router
+    .navigate(RESULT_PATH)
+    .catch((error) => {
+      console.error(
+        '[RIHLATI] Investor matching navigation failed.',
+        error,
+      )
+    })
+}, COMPLETION_DELAY_MS)
+
+
     },
 
     destroy() {

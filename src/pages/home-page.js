@@ -22,6 +22,7 @@ import {
 import { createElement } from '../utils/dom.js'
 import { mountRevealObserver } from '../utils/reveal.js'
 import { createHomeMapPresentation } from './home-map-presentation.js'
+import { jordanGovernorates } from '../data/governorates.js'
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
 
@@ -336,12 +337,13 @@ function createInvestorPreview() {
         ],
       }),
       createHomeMapPresentation({
-        points: investorPreviewPoints,
-        activeIndex: 0,
-        variant: 'markers',
-        clipId: 'home-investor-map-clip',
-        className: 'home-investor-preview__map',
-      }),
+  points: jordanGovernorates,
+  activeIndex: -1,
+  variant: 'markers',
+  clipId: 'home-investor-map-clip',
+  className:
+  'home-investor-preview__map home-map--governorates',
+}),
     ],
   })
 }

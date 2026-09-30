@@ -1,5 +1,6 @@
 import { homeAssets } from '../assets/home-assets.js'
 import { createElement } from '../utils/dom.js'
+import { touristMapPositions } from '../data/tourist-map-positions-data.js'
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg'
 const MAP_CLIP_POLYGON = '40,16 54,30 49,44 68,46 62,66 50,88 30,92 15,70 22,50 27,36 31,24'
@@ -15,12 +16,42 @@ function createSvgElement(tagName, attributes = {}) {
   return element
 }
 
+function getStopMapPosition(stop) {
+  if (stop?.id && touristMapPositions[stop.id]) {
+    return touristMapPositions[stop.id]
+  }
+
+  const derivedId =
+    typeof stop?.name === 'string'
+      ? stop.name
+          .trim()
+          .toLowerCase()
+          .replace(/[^a-z0-9]+/g, '-')
+          .replace(/^-|-$/g, '')
+      : ''
+
+  if (derivedId && touristMapPositions[derivedId]) {
+    return touristMapPositions[derivedId]
+  }
+
+  if (stop?.prototypeMapPosition) {
+    return stop.prototypeMapPosition
+  }
+
+  return {
+    x: 50,
+    y: 50,
+  }
+}
+
 function createRouteSvg(stops, clipId) {
   const routePath = stops
-    .map(({ prototypeMapPosition }, index) => {
-      const command = index === 0 ? 'M' : 'L'
-      return `${command} ${prototypeMapPosition.x} ${prototypeMapPosition.y}`
-    })
+    .map((stop, index) => {
+  const position = getStopMapPosition(stop)
+  const command = index === 0 ? 'M' : 'L'
+
+  return `${command} ${position.x} ${position.y}`
+})
     .join(' ')
 
   const svg = createSvgElement('svg', {
@@ -106,9 +137,17 @@ function createMarker(stop, index, activeIndex, interactive) {
       }),
     ],
   })
+  const position = getStopMapPosition(stop)
 
-  marker.style.setProperty('--marker-x', `${stop.prototypeMapPosition.x}%`)
-  marker.style.setProperty('--marker-y', `${stop.prototypeMapPosition.y}%`)
+  marker.style.setProperty(
+  '--marker-x',
+  `${position.x}%`,
+)
+
+marker.style.setProperty(
+  '--marker-y',
+  `${position.y}%`,
+)
   marker.style.setProperty('--marker-delay', `${0.4 + index * 0.25}s`)
   return marker
 }

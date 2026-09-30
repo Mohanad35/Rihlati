@@ -62,15 +62,12 @@ function validateImageUrl(imageUrl) {
     )
   }
 
-  if (
-    parsedUrl.protocol !== 'https:'
-    && parsedUrl.protocol !== 'http:'
-  ) {
-    throw createContentError(
-      'invalid-image-url',
-      'Image URL must use HTTP or HTTPS.',
-    )
-  }
+  if (parsedUrl.protocol !== 'https:') {
+  throw createContentError(
+    'invalid-image-url',
+    'Image URL must use HTTPS.',
+  )
+}
 }
 
 function normalizeAndValidateContent(content) {

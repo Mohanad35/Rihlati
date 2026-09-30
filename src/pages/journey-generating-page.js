@@ -1,6 +1,14 @@
 import { homeAssets } from '../assets/home-assets.js'
 import { touristAssets } from '../assets/tourist-assets.js'
 import { createElement } from '../utils/dom.js'
+import {
+  getTouristAnswers,
+  savePendingJourney,
+} from '../services/guest-session-service.js'
+
+import {
+  buildTouristJourney,
+} from '../services/tourist-journey-builder-service.js'
 
 const MESSAGE_INTERVAL_MS = 950
 const COMPLETION_DELAY_MS = 4200
@@ -173,6 +181,59 @@ export function createJourneyGeneratingPage({ router } = {}) {
       mounted = true
       active = true
       routeSignal = signal instanceof AbortSignal ? signal : null
+
+      const answers = getTouristAnswers()
+
+if (
+  !answers
+  || typeof answers !== 'object'
+  || Array.isArray(answers)
+) {
+  stop()
+
+  void router.navigate('/t-questionnaire').catch((error) => {
+    console.error(
+      '[RIHLATI] Missing tourist answers; questionnaire navigation failed.',
+      error,
+    )
+  })
+
+  return
+}
+
+try {
+  const generatedJourney =
+    buildTouristJourney(answers)
+
+  const saved =
+    savePendingJourney(
+      generatedJourney,
+    )
+
+  if (!saved) {
+    throw new Error(
+      'Unable to store the generated journey.',
+    )
+  }
+} catch (error) {
+  console.error(
+    '[RIHLATI] Journey matching failed.',
+    error,
+  )
+
+  stop()
+
+  void router.navigate('/t-questionnaire').catch(
+    (navigationError) => {
+      console.error(
+        '[RIHLATI] Questionnaire fallback navigation failed.',
+        navigationError,
+      )
+    },
+  )
+
+  return
+}
 
       if (routeSignal?.aborted) {
         clearTimers()

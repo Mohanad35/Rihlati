@@ -810,3 +810,45 @@
     padding: 0.75rem;
   }
 }
+/* Governorate map preview only */
+.home-map--governorates .home-map__marker {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.home-map--governorates .home-map__marker-dot {
+  border-width: 2px;
+  box-shadow: 0 3px 8px -3px rgba(18, 59, 58, 0.55);
+}
+
+.home-map--governorates .home-map__marker-number {
+  display: none;
+}
+
+.home-map--governorates .home-map__marker-label {
+  top: 50%;
+  left: calc(100% + 0.3rem);
+
+  transform:
+    translateY(-50%)
+    translateX(0);
+
+  border-radius: 0.35rem;
+
+  font-size: 0.55rem;
+  line-height: 1;
+
+  opacity: 1;
+
+  padding: 0.18rem 0.3rem;
+
+  pointer-events: none;
+}
+
+.home-map--governorates
+.home-map__marker:hover
+.home-map__marker-label {
+  transform:
+    translateY(-50%)
+    translateX(0);
+}

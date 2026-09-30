@@ -12,6 +12,7 @@ import {
 } from '../data/investor-result-presentation-data.js'
 import {
   getInvestorAnswers,
+  getPendingInvestment,
   savePendingInvestment,
 } from '../services/guest-session-service.js'
 import { getCurrentUser } from '../services/auth-service.js'
@@ -37,18 +38,20 @@ function createOpportunitySnapshot(match) {
   }
 }
 
-function createPendingInvestmentSnapshot(selectedIndex = 0) {
-  const selectedMatch = investorResultMatches[selectedIndex] ?? investorResultMatches[0]
+function createPendingInvestmentSnapshot(
+  selectedIndex = 0,
+  matches = investorResultMatches,
+) {
+  const selectedMatch =
+    matches[selectedIndex]
+    ?? matches[0]
 
   return {
     schemaVersion: 1,
     opportunityKey: selectedMatch.id,
     criteria: getInvestorAnswers() ?? {},
-    matches: investorResultMatches.map(createOpportunitySnapshot),
-    context: {
-      label: investorResultContext.label,
-      text: investorResultContext.text,
-    },
+    matches: matches.map(createOpportunitySnapshot),
+    
   }
 }
 
@@ -280,7 +283,11 @@ function createMatchCard(match) {
   })
 }
 
-function createContextualInsight() {
+function createContextualInsight(match) {
+  const insight =
+    match?.insight
+    ?? investorResultContext.text
+
   return createCard({
     tagName: 'aside',
     className: 'investor-result__context',
@@ -294,7 +301,7 @@ function createContextualInsight() {
       createElement('p', {
         children: [
           createElement('strong', { text: `${investorResultContext.label}: ` }),
-          document.createTextNode(investorResultContext.text),
+          document.createTextNode(insight),
         ],
       }),
     ],
@@ -302,6 +309,14 @@ function createContextualInsight() {
 }
 
 export function createInvestorResultPage({ path = '/ni-result', router } = {}) {
+  const pendingInvestment = getPendingInvestment()
+
+const resultMatches =
+  Array.isArray(pendingInvestment?.matches)
+  && pendingInvestment.matches.length > 0
+    ? pendingInvestment.matches
+    : investorResultMatches
+
   let activeMatchIndex = 0
   let mounted = false
   let destroyed = false
@@ -311,7 +326,7 @@ export function createInvestorResultPage({ path = '/ni-result', router } = {}) {
   const pageController = new AbortController()
   let headerCleanup = () => {}
 
-  const map = createInvestmentMap(investorResultMatches, activeMatchIndex)
+  const map = createInvestmentMap(resultMatches, activeMatchIndex)
   const selectionStatus = createElement('p', {
     className: 'visually-hidden',
     attributes: {
@@ -328,6 +343,11 @@ export function createInvestorResultPage({ path = '/ni-result', router } = {}) {
       'aria-atomic': 'true',
     },
   })
+
+  let contextualInsight =
+  createContextualInsight(
+    resultMatches[activeMatchIndex],
+  )
 
   const main = createElement('main', {
     className: 'investor-result-main',
@@ -377,8 +397,11 @@ export function createInvestorResultPage({ path = '/ni-result', router } = {}) {
             children: [
               createElement('div', {
                 className: 'investor-result__map-column',
-                children: [map.element, createContextualInsight(), selectionStatus],
-              }),
+children: [
+  map.element,
+  contextualInsight,
+  selectionStatus,
+],              }),
               createElement('section', {
                 attributes: { 'aria-labelledby': 'investor-result-matches-title' },
                 children: [
@@ -389,7 +412,7 @@ export function createInvestorResultPage({ path = '/ni-result', router } = {}) {
                   }),
                   createElement('ol', {
                     className: 'investor-result__matches',
-                    children: investorResultMatches.map(createMatchCard),
+                    children: resultMatches.map(createMatchCard)
                   }),
                 ],
               }),
@@ -452,7 +475,11 @@ export function createInvestorResultPage({ path = '/ni-result', router } = {}) {
           saveStatus.textContent = 'Opportunity saved.'
           await router?.navigate(SAVE_PATH)
         })
-        .catch(() => {
+        .catch((error) => {
+  console.error(
+    '[RIHLATI] Failed to save investor opportunity.',
+    error,
+  )
           if (destroyed) {
             return
           }
@@ -485,20 +512,27 @@ export function createInvestorResultPage({ path = '/ni-result', router } = {}) {
     }
 
     const nextIndex = Number(marker.dataset.matchIndex)
+if (
+  !Number.isInteger(nextIndex) ||
+  nextIndex < 0 ||
+  nextIndex >= resultMatches.length ||
+  nextIndex === activeMatchIndex
+) {
+  return
+}
 
-    if (
-      !Number.isInteger(nextIndex) ||
-      nextIndex < 0 ||
-      nextIndex >= investorResultMatches.length ||
-      nextIndex === activeMatchIndex
-    ) {
-      return
-    }
+activeMatchIndex = nextIndex
+map.setActive(activeMatchIndex)
 
-    activeMatchIndex = nextIndex
-    map.setActive(activeMatchIndex)
-    savePendingInvestment(createPendingInvestmentSnapshot(activeMatchIndex))
-    selectionStatus.textContent = `Selected match ${activeMatchIndex + 1}: ${investorResultMatches[activeMatchIndex].region}.`
+savePendingInvestment(
+  createPendingInvestmentSnapshot(
+    activeMatchIndex,
+    resultMatches,
+  ),
+)
+
+selectionStatus.textContent =
+  `Selected match ${activeMatchIndex + 1}: ${resultMatches[activeMatchIndex].region}.`
   }
 
   return {
@@ -510,7 +544,7 @@ export function createInvestorResultPage({ path = '/ni-result', router } = {}) {
       }
 
       mounted = true
-      savePendingInvestment(createPendingInvestmentSnapshot(activeMatchIndex))
+      
       headerCleanup = mountSiteHeader(header, { signal: pageController.signal })
       page.addEventListener('click', handleClick, { signal: pageController.signal })
     },

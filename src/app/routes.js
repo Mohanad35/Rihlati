@@ -164,7 +164,7 @@ export const routes = [
   {
     path: '/t-journey',
     title: 'Heritage & Desert Escape | Rihlati — رحلتي',
-    createPage: ({ path, router }) => createTouristJourneyPage({ path, router }),
+    createPage: ({ path, url, router }) => createTouristJourneyPage({ path, url, router }),
   },
   {
     path: '/t-save',

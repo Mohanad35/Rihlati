@@ -3,6 +3,43 @@ import { createBadge, createCard } from '../components/ui.js'
 import { adminUsersPresentation as presentation } from '../data/admin-users-presentation-data.js'
 import { createElement } from '../utils/dom.js'
 import { mountRevealObserver } from '../utils/reveal.js'
+import { getAllUsers } from '../repositories/user-repository.js'
+import { getJourneysByOwner } from '../repositories/journey-repository.js'
+import { getInvestmentsByOwner } from '../repositories/investment-repository.js'
+
+
+function mapFirestoreUser(user) {
+  const personas =
+    Array.isArray(user.personas)
+      ? user.personas
+      : []
+
+  let role = 'Tourist'
+
+  if (
+    personas.includes('tourist')
+    && personas.includes('investor')
+  ) {
+    role = 'Tourist & Investor'
+  } else if (personas.includes('investor')) {
+    role = 'Investor'
+  }
+
+  return {
+    id: user.id,
+    name:
+      user.displayName
+      || user.email
+      || 'Unnamed user',
+    email: user.email ?? '',
+    role,
+    personas,
+    country: '—',
+    activity: 'Loading activity…',
+    status: 'Registered',
+    createdAt: user.createdAt,
+  }
+}
 
 function isInvestor(user) {
   return user.role.includes('Investor')
@@ -10,11 +47,11 @@ function isInvestor(user) {
 
 function userMatchesFilter(user, filter) {
   if (filter === 'Tourists') {
-    return user.role === 'Tourist'
+    return user.personas.includes('tourist')
   }
 
   if (filter === 'Investors') {
-    return isInvestor(user)
+    return user.personas.includes('investor')
   }
 
   return true
@@ -118,67 +155,126 @@ function createProfileSection(label, children) {
 }
 
 function createProfileContent(user) {
-  const investor = isInvestor(user)
-  const profile = investor ? presentation.profiles.investor : presentation.profiles.tourist
-  const summary = investor
-    ? profile.summary
-    : `${user.activity} · last active recently`
+  const createdDate =
+    typeof user.createdAt?.toDate === 'function'
+      ? user.createdAt.toDate().toLocaleDateString('en-GB', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+        })
+      : 'Not available'
+
+  const personaLabels =
+    user.personas.length > 0
+      ? user.personas.map((persona) =>
+          persona === 'tourist'
+            ? 'Tourist'
+            : 'Investor',
+        )
+      : ['Unknown']
 
   return [
     createElement('div', {
       className: 'admin-user-profile__header',
+
       children: [
         createElement('span', {
           className: 'admin-user-profile__avatar',
-          attributes: { 'aria-hidden': 'true' },
-          text: user.name[0],
+
+          attributes: {
+            'aria-hidden': 'true',
+          },
+
+          text:
+            user.name?.[0]?.toUpperCase()
+            ?? '?',
         }),
+
         createElement('div', {
           children: [
-            createElement('h2', { className: 'admin-user-profile__name', text: user.name }),
+            createElement('h2', {
+              className: 'admin-user-profile__name',
+              text: user.name,
+            }),
+
             createElement('p', {
               className: 'admin-user-profile__meta',
-              text: `${user.role} · ${user.country}`,
+              text: user.role,
             }),
           ],
         }),
       ],
     }),
+
     createElement('div', {
       className: 'admin-user-profile__details',
+
       children: [
-        createProfileSection(profile.typeLabel, [
-          createElement('div', {
-            className: 'admin-user-profile__tags',
-            children: profile.tags.map((tag) => createBadge(tag, 'sand')),
-          }),
-        ]),
-        createProfileSection(profile.savedLabel, [
-          createElement('ul', {
-            className: 'admin-user-profile__saved',
-            children: profile.savedItems.map((item) =>
-              createElement('li', {
-                children: [
-                  createAdminIcon(investor ? 'partnerships' : 'map'),
-                  createElement('span', { text: item }),
-                ],
-              }),
-            ),
-          }),
-        ]),
-        createProfileSection(profile.summaryLabel, [
-          createElement('p', { className: 'admin-user-profile__summary', text: summary }),
-        ]),
+        createProfileSection(
+          'Account type',
+          [
+            createElement('div', {
+              className: 'admin-user-profile__tags',
+
+              children:
+                personaLabels.map(
+                  (persona) =>
+                    createBadge(
+                      persona,
+                      'sand',
+                    ),
+                ),
+            }),
+          ],
+        ),
+
+        createProfileSection(
+          'Email address',
+          [
+            createElement('p', {
+              className:
+                'admin-user-profile__summary',
+
+              text:
+                user.email
+                || 'Not available',
+            }),
+          ],
+        ),
+
+        createProfileSection(
+          'Joined Rihlati',
+          [
+            createElement('p', {
+              className:
+                'admin-user-profile__summary',
+
+              text: createdDate,
+            }),
+          ],
+        ),
+
+        createProfileSection(
+          'Account ID',
+          [
+            createElement('p', {
+              className:
+                'admin-user-profile__summary',
+
+              text: user.id,
+            }),
+          ],
+        ),
       ],
     }),
   ]
 }
-
 function createUsersView() {
-  const state = {
-    filter: 'All',
-    selectedUserId: presentation.users[0].id,
-  }
+ const state = {
+  filter: 'All',
+  selectedUserId: '',
+  users: [],
+}
   const filterButtons = new Map()
   const tableBody = createElement('tbody')
   const mobileList = createElement('div', {
@@ -271,8 +367,13 @@ function createUsersView() {
   })
 
   function getVisibleUsers() {
-    return presentation.users.filter((user) => userMatchesFilter(user, state.filter))
-  }
+return state.users.filter(
+  (user) =>
+    userMatchesFilter(
+      user,
+      state.filter,
+    ),
+)  }
 
   function reconcileSelection(visibleUsers) {
     if (!visibleUsers.some((user) => user.id === state.selectedUserId)) {
@@ -297,8 +398,26 @@ function createUsersView() {
       ...visibleUsers.map((user) => createUserCard(user, user.id === state.selectedUserId)),
     )
 
-    const selectedUser = presentation.users.find((user) => user.id === state.selectedUserId)
-    profilePanel.replaceChildren(...createProfileContent(selectedUser))
+const selectedUser =
+  state.users.find(
+    (user) =>
+      user.id === state.selectedUserId,
+  )
+
+if (!selectedUser) {
+  profilePanel.replaceChildren(
+    createElement('p', {
+      className: 'admin-user-profile__summary',
+      text: 'Loading users…',
+    }),
+  )
+
+  return
+}
+
+profilePanel.replaceChildren(
+  ...createProfileContent(selectedUser),
+)
   }
 
   function handleClick(event) {
@@ -321,9 +440,89 @@ function createUsersView() {
       ?.focus({ preventScroll: true })
   }
 
+  async function loadUserActivities() {
+  const activityResults =
+    await Promise.all(
+      state.users.map(
+        async (user) => {
+          try {
+            const [
+              journeys,
+              investments,
+            ] = await Promise.all([
+              getJourneysByOwner(user.id),
+              getInvestmentsByOwner(user.id),
+            ])
+
+            return {
+              userId: user.id,
+              journeyCount:
+                journeys.length,
+              investmentCount:
+                investments.length,
+            }
+          } catch (error) {
+            console.error(
+              `Failed to load activity for ${user.id}:`,
+              error,
+            )
+
+            return {
+              userId: user.id,
+              journeyCount: 0,
+              investmentCount: 0,
+            }
+          }
+        },
+      ),
+    )
+
+  for (const result of activityResults) {
+    const user =
+      state.users.find(
+        (item) =>
+          item.id === result.userId,
+      )
+
+    if (!user) {
+      continue
+    }
+
+    const journeyLabel =
+      result.journeyCount === 1
+        ? '1 saved journey'
+        : `${result.journeyCount} saved journeys`
+
+    const investmentLabel =
+      result.investmentCount === 1
+        ? '1 saved investment'
+        : `${result.investmentCount} saved investments`
+
+    user.activity =
+      `${journeyLabel} · ${investmentLabel}`
+  }
+
+  render()
+}
+
+  function setUsers(users) {
+  state.users =
+    users.map(mapFirestoreUser)
+
+  state.selectedUserId =
+    state.users[0]?.id ?? ''
+
+  render()
+  void loadUserActivities()
+}
+
   render()
 
-  return { element: main, handleClick }
+  return {
+  element: main,
+  handleClick,
+  setUsers,
+}
 }
 
 export function createAdminUsersPage() {
@@ -349,6 +548,21 @@ export function createAdminUsersPage() {
       }
 
       mounted = true
+
+      void getAllUsers()
+  .then((users) => {
+    if (destroyed) {
+      return
+    }
+
+    usersView.setUsers(users)
+  })
+  .catch((error) => {
+    console.error(
+      'Failed to load admin users:',
+      error,
+    )
+  })
       usersView.element.addEventListener('click', usersView.handleClick, {
         signal: pageController.signal,
       })
