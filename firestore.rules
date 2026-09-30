@@ -235,6 +235,98 @@ service cloud.firestore {
       return isAuthenticated() && data.ownerId == request.auth.uid;
     }
 
+    function hasCanonicalContentType(contentType) {
+  return contentType in [
+    'Travel Guide',
+    'Tourism News',
+    'Investment Insight',
+    'Story & Experience'
+  ];
+}
+
+function hasCanonicalContentAudience(targetAudience) {
+  return targetAudience in [
+    'Travellers',
+    'Investors',
+    'All audiences'
+  ];
+}
+
+function hasCanonicalContentStatus(status) {
+  return status in [
+    'Published',
+    'Draft',
+    'In review'
+  ];
+}
+
+function hasSafeContentEnvelope(data) {
+  return data.keys().hasAll([
+      'schemaVersion',
+      'title',
+      'contentType',
+      'category',
+      'targetAudience',
+      'location',
+      'summary',
+      'imageUrl',
+      'status',
+      'createdAt',
+      'updatedAt'
+    ])
+    && data.keys().hasOnly([
+      'schemaVersion',
+      'title',
+      'contentType',
+      'category',
+      'targetAudience',
+      'location',
+      'summary',
+      'imageUrl',
+      'status',
+      'createdAt',
+      'updatedAt'
+    ])
+
+    && data.schemaVersion is int
+    && data.schemaVersion == 1
+
+    && data.title is string
+    && data.title.size() > 0
+    && data.title.size() <= 180
+
+    && data.contentType is string
+    && hasCanonicalContentType(data.contentType)
+
+    && data.category is string
+    && data.category.size() > 0
+    && data.category.size() <= 120
+
+    && data.targetAudience is string
+    && hasCanonicalContentAudience(data.targetAudience)
+
+    && data.location is string
+    && data.location.size() <= 160
+
+    && data.summary is string
+    && data.summary.size() > 0
+    && data.summary.size() <= 1000
+
+    && data.imageUrl is string
+    && data.imageUrl.size() <= 1000
+    && (
+      data.imageUrl == ''
+      || data.imageUrl.matches('https://.+')
+      || data.imageUrl.matches('http://.+')
+    )
+
+    && data.status is string
+    && hasCanonicalContentStatus(data.status)
+
+    && data.createdAt is timestamp
+    && data.updatedAt is timestamp;
+}
+
     function hasCanonicalPartnershipStatus(status) {
   return status in [
     'New Request',
@@ -412,6 +504,24 @@ function isPartnershipRequestOwner(data) {
   allow delete: if false;
 }
 
+match /content/{contentId} {
+  allow get: if resource.data.status == 'Published' || isAdmin();
+
+  allow list: if isAdmin()
+    || resource.data.status == 'Published';
+
+  allow create: if isAdmin()
+    && hasSafeContentEnvelope(request.resource.data)
+    && request.resource.data.createdAt == request.time
+    && request.resource.data.updatedAt == request.time;
+
+  allow update: if isAdmin()
+    && hasSafeContentEnvelope(request.resource.data)
+    && request.resource.data.createdAt == resource.data.createdAt
+    && request.resource.data.updatedAt == request.time;
+
+  allow delete: if isAdmin();
+}
     match /{document=**} {
       allow read, write: if false;
     }
